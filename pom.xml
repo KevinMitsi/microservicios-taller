@@ -20,6 +20,7 @@
 
 	<modules>
 		<module>msvc-saludo</module>
+		<module>msvc-security</module>
 	</modules>
 
 	<properties>
