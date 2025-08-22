@@ -15,13 +15,10 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class LoginController {
 
-    private final JwtUtils jwtService;
-
     @PostMapping("/login")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody LoginRequest request) {
-        String token = jwtService.generateToken(request.getUsuario());
         Map<String, String> response = Map.of(
-                "token", token,
+                "token", "token",
                 "type", "Bearer"
         );
         return ResponseEntity.ok(response);
