@@ -29,7 +29,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 ).sessionManagement(
                         session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                ).oauth2Login(oauth2login -> oauth2login.loginPage("/oauth2/authorization/msvc-saludo-client"))
+                ).oauth2Login(oauth2login -> oauth2login.loginPage("/oauth2/authorization/msvc-saludo-client")).csrf(AbstractHttpConfigurer::disable)
                 .oauth2Client(Customizer.withDefaults())
                 .oauth2ResourceServer(httpSecurityOAuth2ResourceServerConfigurer ->
                         httpSecurityOAuth2ResourceServerConfigurer.jwt(Customizer.withDefaults()));
