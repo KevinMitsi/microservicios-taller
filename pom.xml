@@ -21,6 +21,7 @@
 	<modules>
 		<module>msvc-saludo</module>
 		<module>msvc-security</module>
+		<module>msvc-consumer</module>
 	</modules>
 
 	<properties>
