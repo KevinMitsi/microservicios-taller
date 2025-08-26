@@ -10,4 +10,5 @@ public class MsvcConsumerApplication {
 		SpringApplication.run(MsvcConsumerApplication.class, args);
 	}
 
+
 }
