@@ -5,7 +5,6 @@ import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -33,14 +32,14 @@ public class JwtUtils {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(UserDetails usuario) {
+    public String generateToken(String usuario) {
         Instant now = Instant.now();
         Date issuedAt = Date.from(now);
         Date expiration = Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES));
 
         return Jwts.builder()
                 .claims()
-                .subject(usuario.getUsername())
+                .subject(usuario)
                 .issuer(issuer)
                 .issuedAt(issuedAt)
                 .expiration(expiration)
@@ -49,4 +48,46 @@ public class JwtUtils {
                 .compact();
     }
 
+    public boolean validateToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(secretKey)
+                    .build()
+                    .parseSignedClaims(token)  // parseClaimsJws() → parseSignedClaims()
+                    .getPayload();             // getBody() → getPayload()
+
+            String tokenIssuer = claims.getIssuer();
+            return issuer.equals(tokenIssuer) && claims.getExpiration().after(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    public String getUsernameFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)  // parseClaimsJws() → parseSignedClaims()
+                .getPayload()              // getBody() → getPayload()
+                .getSubject();
+    }
+
+    // Método adicional para obtener claims específicos si los necesitas
+    public Claims getClaimsFromToken(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)  // parseClaimsJws() → parseSignedClaims()
+                .getPayload();             // getBody() → getPayload()
+    }
+
+    public boolean isTokenExpired(String token) {
+        try {
+            Date expiration = getClaimsFromToken(token).getExpiration();
+            return expiration.before(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
+            return true;
+
+        }
+    }
 }
