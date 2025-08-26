@@ -17,6 +17,7 @@ COPY src ./src
 # Compilar el proyecto y generar el JAR
 RUN mvn clean package -DskipTests
 
+
 # =======================
 # Etapa 2: Imagen final (Runtime)
 # =======================
