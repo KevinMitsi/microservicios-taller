@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  msvc-security:
+    image: kevinmitsi/msvc-security:latest
+    container_name: msvc-security
+    ports:
+      - "8080:8080"
+    networks:
+      - msvc-net
+
+  msvc-saludo:
+    image: kevinmitsi/msvc-saludo:latest
+    container_name: msvc-saludo
+    ports:
+      - "80:80"
+    networks:
+      - msvc-net
+
+networks:
+  msvc-net:
+    driver: bridge
