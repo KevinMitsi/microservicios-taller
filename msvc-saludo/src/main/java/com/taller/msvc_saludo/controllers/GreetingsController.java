@@ -6,19 +6,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Collections;
-import java.util.Map;
-
-
 @RestController
 public class GreetingsController {
 
     @GetMapping("/saludo")
     public ResponseEntity<String> greet(@RequestParam String nombre) {
         return ResponseEntity.ok("Hola " + nombre + ", bienvenido al microservicio de saludo!");
-    }
-    @GetMapping("/authorized")
-    public Map<String, Object> authorized(@RequestParam(name = "code") String code) {
-        return Collections.singletonMap("code", code);
     }
 }
