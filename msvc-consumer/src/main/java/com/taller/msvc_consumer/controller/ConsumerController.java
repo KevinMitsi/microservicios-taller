@@ -6,6 +6,7 @@ import com.taller.msvc_consumer.service.ConsumerService;
 import com.taller.msvc_consumer.service.RandomStringService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -14,12 +15,11 @@ public class ConsumerController {
     private final RandomStringService randomStringService;
     private final ConsumerService consumerService;
 
-    @GetMapping("/consumeApps")
-    public String askForToken() {
+    @GetMapping("/consumeApps/{nameForGreeting}")
+    public String askForToken(@PathVariable String nameForGreeting) {
         LoginRequestDto securityRequest = new LoginRequestDto(randomStringService.generateRandomString(15)
                 , randomStringService.generateRandomString(10));
          LoginResponseDto securityResponse = consumerService.getToken(securityRequest);
-        System.out.println("Token received: " + securityResponse.getToken());
-         return consumerService.getGreeting("ConsumerApp", "Bearer "+securityResponse.getToken());
+         return consumerService.getGreeting(nameForGreeting, "Bearer "+securityResponse.getToken());
     }
 }
