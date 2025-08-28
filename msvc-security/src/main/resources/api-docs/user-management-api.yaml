@@ -8,7 +8,7 @@ servers:
   - url: http://msvc-security:8080
     description: Microservicio de Seguridad
 paths:
-  /api/users:
+  /api/newUser:
     post:
       # Registro de nuevo usuario
       summary: Registrar nuevo usuario
@@ -285,7 +285,7 @@ paths:
                 $ref: '#/components/schemas/Error'
 
   /api/auth/password-reset:
-    post:
+    patch:
       # Restablecimiento de contraseña
       summary: Restablecer contraseña
       tags:
