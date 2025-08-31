@@ -38,11 +38,15 @@ public class JwtUtils {
         Date expiration = Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES));
 
         return Jwts.builder()
+                .header()
+                .type("JWT")
+                .and()
                 .claims()
                 .subject(usuario)
                 .issuer(issuer)
                 .issuedAt(issuedAt)
                 .expiration(expiration)
+                .add("typ", "Bearer")
                 .and()
                 .signWith(secretKey)
                 .compact();
