@@ -39,6 +39,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
+  /api/users:
     get:
       # Listado paginado de usuarios
       summary: Listar todos los usuarios
