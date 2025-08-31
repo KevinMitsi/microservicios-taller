@@ -1,5 +1,8 @@
 package com.taller.msvc_security.Entities;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -11,6 +14,9 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Document(collection = "user_documents")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class UserDocument {
 
     @Id
