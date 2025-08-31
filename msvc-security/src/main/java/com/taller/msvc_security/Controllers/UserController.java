@@ -1,4 +1,4 @@
-package com.taller.msvc_security.Controller;
+package com.taller.msvc_security.Controllers;
 
 import com.taller.msvc_security.Entities.UserDocument;
 import com.taller.msvc_security.Models.*;
