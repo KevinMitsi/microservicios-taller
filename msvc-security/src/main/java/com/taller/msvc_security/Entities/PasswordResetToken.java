@@ -23,50 +23,6 @@ public class PasswordResetToken {
 
     private LocalDateTime expiryDate;
 
-    // Constructor por defecto
-    public PasswordResetToken() {
-    }
-
-    public PasswordResetToken(String token, String userId, int expirationMinutes) {
-        this.token = token;
-        this.userId = userId;
-        this.expiryDate = LocalDateTime.now().plusMinutes(expirationMinutes);
-    }
-
-    // Getters y Setters
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
-    }
-
-    public String getUserId() {
-        return userId;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public LocalDateTime getExpiryDate() {
-        return expiryDate;
-    }
-
-    public void setExpiryDate(LocalDateTime expiryDate) {
-        this.expiryDate = expiryDate;
-    }
-
     public boolean isExpired() {
         return LocalDateTime.now().isAfter(this.expiryDate);
     }

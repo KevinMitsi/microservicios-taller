@@ -1,5 +1,6 @@
-package com.taller.msvc_security.Services;
+package com.taller.msvc_security.utils;
 
+import com.taller.msvc_security.Entities.Role;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -10,7 +11,8 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.Date;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Component
 public class JwtUtils {
@@ -32,22 +34,25 @@ public class JwtUtils {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String usuario) {
+    public String generateToken(String username, Set<Role> roles) {
         Instant now = Instant.now();
         Date issuedAt = Date.from(now);
         Date expiration = Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES));
+        Map<String, Object> claims = new HashMap<>();
+        List<String> rolesList = roles.stream()
+                .map(Enum::name)
+                .collect(Collectors.toList());
+        claims.put("roles", rolesList);
 
         return Jwts.builder()
                 .header()
                 .type("JWT")
                 .and()
-                .claims()
-                .subject(usuario)
+                .claims(claims)
+                .subject(username)
                 .issuer(issuer)
                 .issuedAt(issuedAt)
                 .expiration(expiration)
-                .add("typ", "Bearer")
-                .and()
                 .signWith(secretKey)
                 .compact();
     }
@@ -93,5 +98,22 @@ public class JwtUtils {
             return true;
 
         }
+    }
+
+    public List<String> getRolesFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        Object rolesObject = claims.get("roles");
+        if (rolesObject instanceof List<?> rolesList) {
+            return rolesList.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .toList();
+        }
+        return new ArrayList<>();
     }
 }
