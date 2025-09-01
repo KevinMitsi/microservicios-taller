@@ -1,5 +1,6 @@
 package com.taller.msvc_security.Services;
 
+import com.taller.msvc_security.Entities.Role;
 import com.taller.msvc_security.Entities.UserDocument;
 import com.taller.msvc_security.Models.AuthResponse;
 import com.taller.msvc_security.Models.UserRegistrationRequest;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
+import java.util.Set;
 
 public interface UserService {
 
@@ -48,10 +50,10 @@ public interface UserService {
 
     /**
      * Elimina un usuario del sistema
+     *
      * @param id identificador del usuario a eliminar
-     * @return true si el usuario fue eliminado, false si no se encontró
      */
-    boolean deleteUser(String id);
+    void deleteUser(String id);
 
     /**
      * Realiza la autenticación de un usuario
@@ -63,19 +65,19 @@ public interface UserService {
 
     /**
      * Inicia el proceso de recuperación de contraseña
+     *
      * @param email correo del usuario
-     * @return true si se envió el correo de recuperación, false si no se encontró el email
      */
-    boolean requestPasswordRecovery(String email);
+    void requestPasswordRecovery(String email);
 
     /**
      * Restablece la contraseña de un usuario usando un token de recuperación
-     * @param token token de recuperación
+     *
+     * @param token       token de recuperación
      * @param newPassword nueva contraseña
-     * @return true si la contraseña fue restablecida correctamente
      * @throws RuntimeException si el token es inválido o ha expirado
      */
-    boolean resetPassword(String token, String newPassword);
+    void resetPassword(String token, String newPassword);
 
     /**
      * Busca un usuario por su nombre de usuario
@@ -112,4 +114,6 @@ public interface UserService {
      * @return página de usuarios que coinciden con la búsqueda
      */
     Page<UserDocument> searchUsers(String searchTerm, Pageable pageable);
+    Optional<UserDocument>getUserByUsername(String username);
+    UserDocument updateUserRoles(String id, Set<Role> roles);
 }

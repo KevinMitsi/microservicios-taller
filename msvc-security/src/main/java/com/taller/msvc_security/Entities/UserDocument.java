@@ -3,13 +3,10 @@ package com.taller.msvc_security.Entities;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -34,4 +31,16 @@ public class UserDocument {
 
     private String lastName;
 
+    private Set<Role> authorities = new HashSet<>();
+
+    public void addRole(Role role) {
+        if (authorities == null) {
+            authorities = new HashSet<>();
+        }
+        authorities.add(role);
     }
+
+    public boolean hasRole(Role role) {
+        return authorities != null && authorities.contains(role);
+    }
+}

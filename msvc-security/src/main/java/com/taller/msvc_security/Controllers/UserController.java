@@ -1,8 +1,10 @@
 package com.taller.msvc_security.Controllers;
 
+import com.taller.msvc_security.Entities.Role;
 import com.taller.msvc_security.Entities.UserDocument;
 import com.taller.msvc_security.Models.*;
 import com.taller.msvc_security.Services.UserService;
+import com.taller.msvc_security.utils.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api")
@@ -68,12 +71,20 @@ public class UserController {
      */
     @GetMapping("/users/{id}")
     public ResponseEntity<UserDocument> getUserById(@PathVariable String id) {
-        Optional<UserDocument> user = userService.getUserById(id);
-        if (user.isPresent()) {
-            return ResponseEntity.ok(user.get());
-        } else {
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        Optional<UserDocument> userOpt = userService.getUserById(id);
+
+        if (userOpt.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado con ID: " + id);
         }
+
+        UserDocument user = userOpt.get();
+        // Verificar si el usuario actual está intentando acceder a su propio perfil
+        if (!user.getUsername().equals(currentUsername)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para acceder a este recurso");
+        }
+
+        return ResponseEntity.ok(user);
     }
 
     /**
@@ -84,15 +95,23 @@ public class UserController {
             @PathVariable String id,
             @RequestBody UserUpdateRequest updateRequest) {
 
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        Optional<UserDocument> userOpt = userService.getUserById(id);
+
+        if (userOpt.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado con ID: " + id);
+        }
+
+        UserDocument user = userOpt.get();
+        if (!user.getUsername().equals(currentUsername)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para modificar este usuario");
+        }
+
         try {
             UserDocument updatedUser = userService.updateUser(id, updateRequest);
             return ResponseEntity.ok(updatedUser);
         } catch (RuntimeException e) {
-            if (e.getMessage().contains("Usuario no encontrado")) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
-            } else {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
-            }
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -101,12 +120,20 @@ public class UserController {
      */
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
-        boolean deleted = userService.deleteUser(id);
-        if (deleted) {
-            return ResponseEntity.noContent().build();
-        } else {
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        Optional<UserDocument> userOpt = userService.getUserById(id);
+
+        if (userOpt.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuario no encontrado con ID: " + id);
         }
+
+        UserDocument user = userOpt.get();
+        if (!user.getUsername().equals(currentUsername)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permiso para eliminar este usuario");
+        }
+
+        userService.deleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 
     /**
@@ -133,7 +160,7 @@ public class UserController {
         }
 
         try {
-            boolean sent = userService.requestPasswordRecovery(email);
+            userService.requestPasswordRecovery(email);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Se ha enviado un correo con instrucciones para restablecer la contraseña");
             return ResponseEntity.ok(response);
@@ -155,7 +182,7 @@ public class UserController {
         }
 
         try {
-            boolean reset = userService.resetPassword(token, newPassword);
+            userService.resetPassword(token, newPassword);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Contraseña restablecida correctamente");
             return ResponseEntity.ok(response);
@@ -163,6 +190,27 @@ public class UserController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, e.getMessage());
+        }
+    }
+
+    @PutMapping("/users/{id}/roles")
+    public ResponseEntity<UserDocument> updateUserRoles(
+            @PathVariable String id,
+            @RequestBody Set<Role> roles) {
+
+        String currentUsername = SecurityUtils.getCurrentUsername();
+        Optional<UserDocument> currentUserOpt = userService.getUserByUsername(currentUsername);
+
+        if (currentUserOpt.isEmpty() || !currentUserOpt.get().hasRole(Role.ADMIN)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "No tienes permisos para modificar roles");
+        }
+
+        try {
+            UserDocument updatedUser = userService.updateUserRoles(id, roles);
+            return ResponseEntity.ok(updatedUser);
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 }
