@@ -32,6 +32,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Rutas públicas
                         .requestMatchers("/api/auth/login").permitAll()
+                        .requestMatchers("/swagger-ui/index.html").permitAll()
                         .requestMatchers("/api/newUser").permitAll()
                         .requestMatchers("/api/auth/password-recovery").permitAll()
                         .requestMatchers("/api/auth/password-reset").permitAll()
