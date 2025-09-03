@@ -32,7 +32,7 @@ public class UserController {
     /**
      * Endpoint para registrar un nuevo usuario
      */
-    @PostMapping("/newUser")
+    @PostMapping("/users")
     @Operation(
             summary = "Crear usuario",
             description = "Registra un nuevo usuario en el sistema",
