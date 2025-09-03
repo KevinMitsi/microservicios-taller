@@ -6,8 +6,7 @@ import com.taller.msvc_security.Models.*;
 import com.taller.msvc_security.Services.UserService;
 import com.taller.msvc_security.utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
+
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
