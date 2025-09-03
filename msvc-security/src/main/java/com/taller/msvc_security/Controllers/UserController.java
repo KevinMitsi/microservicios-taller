@@ -5,6 +5,10 @@ import com.taller.msvc_security.Entities.UserDocument;
 import com.taller.msvc_security.Models.*;
 import com.taller.msvc_security.Services.UserService;
 import com.taller.msvc_security.utils.SecurityUtils;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,6 +34,15 @@ public class UserController {
      * Endpoint para registrar un nuevo usuario
      */
     @PostMapping("/newUser")
+    @Operation(
+            summary = "Crear usuario",
+            description = "Registra un nuevo usuario en el sistema",
+            responses = {
+                    @ApiResponse(responseCode = "201", description = "Usuario creado"),
+                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe")
+            }
+    )
     public ResponseEntity<UserDocument> registerUser(@RequestBody UserRegistrationRequest request) {
         try {
             UserDocument createdUser = userService.registerUser(request);
@@ -45,6 +58,14 @@ public class UserController {
      * Endpoint para listar todos los usuarios de forma paginada
      */
     @GetMapping("/users")
+    @Operation(
+            summary = "Listar usuarios",
+            description = "Obtiene todos los usuarios de forma paginada",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Usuarios listados"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
+            }
+    )
     public ResponseEntity<Map<String, Object>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
@@ -70,6 +91,15 @@ public class UserController {
      * Endpoint para obtener un usuario por su ID
      */
     @GetMapping("/users/{id}")
+    @Operation(
+            summary = "Obtener usuario por ID",
+            description = "Retorna la información detallada de un usuario por su ID",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Usuario encontrado"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+            }
+    )
     public ResponseEntity<UserDocument> getUserById(@PathVariable String id) {
         String currentUsername = SecurityUtils.getCurrentUsername();
         Optional<UserDocument> userOpt = userService.getUserById(id);
@@ -91,6 +121,16 @@ public class UserController {
      * Endpoint para actualizar un usuario existente
      */
     @PutMapping("/users/{id}")
+    @Operation(
+            summary = "Actualizar usuario",
+            description = "Permite modificar los datos de un usuario existente",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Usuario actualizado"),
+                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+            }
+    )
     public ResponseEntity<UserDocument> updateUser(
             @PathVariable String id,
             @RequestBody UserUpdateRequest updateRequest) {
@@ -119,6 +159,15 @@ public class UserController {
      * Endpoint para eliminar un usuario
      */
     @DeleteMapping("/users/{id}")
+    @Operation(
+            summary = "Eliminar usuario",
+            description = "Elimina un usuario del sistema",
+            responses = {
+                    @ApiResponse(responseCode = "204", description = "Usuario eliminado"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+            }
+    )
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
         String currentUsername = SecurityUtils.getCurrentUsername();
         Optional<UserDocument> userOpt = userService.getUserById(id);
@@ -140,6 +189,14 @@ public class UserController {
      * Endpoint para autenticación de usuarios
      */
     @PostMapping("/auth/login")
+    @Operation(
+            summary = "Iniciar sesión",
+            description = "Autentica un usuario y retorna un token JWT",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
+                    @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
+            }
+    )
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         try {
             AuthResponse authResponse = userService.login(loginRequest);
@@ -153,6 +210,15 @@ public class UserController {
      * Endpoint para solicitar recuperación de contraseña
      */
     @PostMapping("/auth/password-recovery")
+    @Operation(
+            summary = "Recuperación de contraseña",
+            description = "Solicita el envío de un correo con instrucciones para recuperar contraseña",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Correo enviado"),
+                    @ApiResponse(responseCode = "400", description = "Email no válido"),
+                    @ApiResponse(responseCode = "404", description = "Email no encontrado")
+            }
+    )
     public ResponseEntity<Map<String, String>> requestPasswordRecovery(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         if (email == null || email.isEmpty()) {
@@ -173,6 +239,15 @@ public class UserController {
      * Endpoint para restablecer contraseña con token
      */
     @PatchMapping("/auth/password-reset")
+    @Operation(
+            summary = "Restablecer contraseña",
+            description = "Permite restablecer la contraseña usando un token de recuperación",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Contraseña restablecida"),
+                    @ApiResponse(responseCode = "400", description = "Token o contraseña inválida"),
+                    @ApiResponse(responseCode = "401", description = "Token inválido o expirado")
+            }
+    )
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
         String token = request.get("token");
         String newPassword = request.get("newPassword");
@@ -194,6 +269,16 @@ public class UserController {
     }
 
     @PutMapping("/users/{id}/roles")
+    @Operation(
+            summary = "Actualizar roles de usuario",
+            description = "Permite a un administrador modificar los roles de un usuario",
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "Roles actualizados"),
+                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+            }
+    )
     public ResponseEntity<UserDocument> updateUserRoles(
             @PathVariable String id,
             @RequestBody Set<Role> roles) {
