@@ -131,6 +131,7 @@ public class UserController {
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
@@ -287,6 +288,7 @@ public class UserController {
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
