@@ -39,7 +39,8 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "201", description = "Usuario creado"),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe")
+                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<UserDocument> registerUser(@RequestBody UserRegistrationRequest request) {
@@ -62,6 +63,7 @@ public class UserController {
             description = "Obtiene todos los usuarios de forma paginada",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Usuarios listados"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
@@ -96,7 +98,8 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Usuario encontrado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<UserDocument> getUserById(@PathVariable String id) {
@@ -127,7 +130,8 @@ public class UserController {
                     @ApiResponse(responseCode = "200", description = "Usuario actualizado"),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<UserDocument> updateUser(
@@ -164,7 +168,8 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "204", description = "Usuario eliminado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<Void> deleteUser(@PathVariable String id) {
@@ -193,7 +198,9 @@ public class UserController {
             description = "Autentica un usuario y retorna un token JWT",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
-                    @ApiResponse(responseCode = "401", description = "Credenciales inválidas")
+                    @ApiResponse(responseCode = "401", description = "Credenciales inválidas"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
@@ -215,7 +222,9 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Correo enviado"),
                     @ApiResponse(responseCode = "400", description = "Email no válido"),
-                    @ApiResponse(responseCode = "404", description = "Email no encontrado")
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "404", description = "Email no encontrado"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<Map<String, String>> requestPasswordRecovery(@RequestBody Map<String, String> request) {
@@ -244,7 +253,9 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Contraseña restablecida"),
                     @ApiResponse(responseCode = "400", description = "Token o contraseña inválida"),
-                    @ApiResponse(responseCode = "401", description = "Token inválido o expirado")
+                    @ApiResponse(responseCode = "401", description = "Token inválido o expirado"),
+                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
@@ -275,7 +286,8 @@ public class UserController {
                     @ApiResponse(responseCode = "200", description = "Roles actualizados"),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado")
+                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
+                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
     public ResponseEntity<UserDocument> updateUserRoles(

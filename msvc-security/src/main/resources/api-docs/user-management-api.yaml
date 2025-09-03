@@ -39,6 +39,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     get:
       # Listado paginado de usuarios
       summary: Listar todos los usuarios
@@ -93,7 +99,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/users/{id}:
     get:
       # Consulta de usuario por ID
@@ -122,13 +133,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Prohibido - Permisos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Usuario no encontrado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     put:
       # Actualización de usuario
       summary: Actualizar usuario
@@ -168,13 +190,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Prohibido - Permisos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Usuario no encontrado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       # Eliminación de usuario
       summary: Eliminar usuario
@@ -210,7 +243,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/auth/login:
     post:
       # Autenticación de usuario
@@ -242,7 +280,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '403':
+          description: Prohibido - Permisos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/auth/password-recovery:
     post:
       # Solicitud de recuperación de contraseña
@@ -277,13 +326,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Prohibido - Permisos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Email no encontrado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/auth/password-reset:
     patch:
       # Restablecimiento de contraseña
@@ -328,7 +388,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '403':
+          description: Prohibido - Permisos insuficientes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     # Estructura para el registro de usuario
