@@ -73,11 +73,12 @@ public interface UserService {
     /**
      * Restablece la contraseña de un usuario usando un token de recuperación
      *
+     * @param userId      id del usuario
      * @param token       token de recuperación
      * @param newPassword nueva contraseña
      * @throws RuntimeException si el token es inválido o ha expirado
      */
-    void resetPassword(String token, String newPassword);
+    void resetPasswordForUser(String userId, String token, String newPassword);
 
     /**
      * Busca un usuario por su nombre de usuario
@@ -116,4 +117,13 @@ public interface UserService {
     Page<UserDocument> searchUsers(String searchTerm, Pageable pageable);
     Optional<UserDocument>getUserByUsername(String username);
     UserDocument updateUserRoles(String id, Set<Role> roles);
+
+    /**
+     * Obtiene una lista paginada de usuarios filtrando por nombre y apellido (opcional)
+     * @param pageable configuración de paginación
+     * @param firstName filtro de nombre (opcional)
+     * @param lastName filtro de apellido (opcional)
+     * @return página de usuarios filtrados
+     */
+    Page<UserDocument> getAllUsersFiltered(Pageable pageable, String firstName, String lastName);
 }

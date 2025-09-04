@@ -194,37 +194,6 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    @Transactional
-    public void resetPassword(String token, String newPassword) {
-        // Validar el token
-        PasswordResetToken resetToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Token inválido"));
-
-        // Verificar si el token ha expirado
-        if (resetToken.isExpired()) {
-            tokenRepository.delete(resetToken);
-            throw new InvalidOneTimeTokenException("El token ha expirado");
-        }
-
-        // Validar la nueva contraseña
-        if (newPassword == null || newPassword.length() < 8) {
-            throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
-        }
-
-        // Buscar el usuario asociado al token
-        UserDocument user = userRepository.findById(resetToken.getUserId())
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        // Actualizar la contraseña del usuario - usamos setter gracias a @Data
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        // Eliminar el token usado
-        tokenRepository.delete(resetToken);
-
-    }
-
-    @Override
     public Optional<UserDocument> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
@@ -267,5 +236,54 @@ public class UserServiceImpl implements UserService {
         return userRepository.save(user);
     }
 
+    @Override
+    @Transactional
+    public void resetPasswordForUser(String userId, String token, String newPassword) {
+        // Validar el token
+        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Token inválido"));
+
+        // Verificar si el token ha expirado
+        if (resetToken.isExpired()) {
+            tokenRepository.delete(resetToken);
+            throw new InvalidOneTimeTokenException("El token ha expirado");
+        }
+
+        // Verificar que el token corresponde al usuario
+        if (!resetToken.getUserId().equals(userId)) {
+            throw new RuntimeException("El token no corresponde al usuario");
+        }
+
+        // Validar la nueva contraseña
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
+        }
+
+        // Buscar el usuario asociado al token
+        UserDocument user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // Actualizar la contraseña del usuario
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        // Eliminar el token usado
+        tokenRepository.delete(resetToken);
+    }
+
+    @Override
+    public Page<UserDocument> getAllUsersFiltered(Pageable pageable, String firstName, String lastName) {
+        if ((firstName == null || firstName.isBlank()) && (lastName == null || lastName.isBlank())) {
+            return userRepository.findAll(pageable);
+        }
+        if (firstName != null && !firstName.isBlank() && (lastName == null || lastName.isBlank())) {
+            return userRepository.findByFirstNameContainingIgnoreCase(firstName, pageable);
+        }
+        if ((firstName == null || firstName.isBlank()) && lastName != null && !lastName.isBlank()) {
+            return userRepository.findByLastNameContainingIgnoreCase(lastName, pageable);
+        }
+        // Ambos filtros presentes
+        return userRepository.findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(firstName, lastName, pageable);
+    }
 
 }

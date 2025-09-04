@@ -8,7 +8,7 @@ servers:
   - url: http://msvc-security:8080
     description: Microservicio de Seguridad
 paths:
-  /api/newUser:
+  /api/users:
     post:
       # Registro de nuevo usuario
       summary: Registrar nuevo usuario
@@ -39,10 +39,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /api/users:
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     get:
-      # Listado paginado de usuarios
+      # Listado paginado y filtrado de usuarios
       summary: Listar todos los usuarios
       tags:
         - usuarios
@@ -61,6 +65,18 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: firstName
+          in: query
+          description: Filtrar por nombre (coincidencia parcial, opcional)
+          required: false
+          schema:
+            type: string
+        - name: lastName
+          in: query
+          description: Filtrar por apellido (coincidencia parcial, opcional)
+          required: false
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:
@@ -90,12 +106,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/users/{id}:
     get:
       # Consulta de usuario por ID
@@ -124,13 +145,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Usuario no encontrado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     put:
       # Actualización de usuario
       summary: Actualizar usuario
@@ -170,13 +202,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '404':
           description: Usuario no encontrado
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '409':
+          description: Conflicto, el usuario ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     delete:
       # Eliminación de usuario
       summary: Eliminar usuario
@@ -201,6 +250,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Usuario no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/users/{id}/roles:
+    put:
+      summary: Actualizar roles de usuario (temporal)
+      description: |
+        Permite a un administrador modificar los roles de un usuario.  
+        **Nota:** Este endpoint es temporal y solo debe usarse para pruebas o administración especial.
+      tags:
+        - usuarios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                example: "ADMIN"
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Roles actualizados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
           description: Prohibido - Permisos insuficientes
           content:
             application/json:
@@ -212,7 +318,81 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+        '409':
+          description: Conflicto, el usuario ya existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/users/{id}/password:
+    patch:
+      # Restablecimiento de contraseña de usuario
+      summary: Restablecer contraseña de usuario
+      tags:
+        - usuarios
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          description: Contraseña restablecida exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Token o contraseña inválida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Token inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /api/auth/login:
     post:
       # Autenticación de usuario
@@ -244,8 +424,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /api/auth/password-recovery:
+        '403':
+          description: Acceso prohibido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Error interno del servidor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /api/auth/tokens:
     post:
       # Solicitud de recuperación de contraseña
       summary: Solicitar recuperación de contraseña
@@ -274,7 +465,13 @@ paths:
                   message:
                     type: string
         '400':
-          description: Datos de entrada inválidos
+          description: Email no válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -285,47 +482,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /api/auth/password-reset:
-    patch:
-      # Restablecimiento de contraseña
-      summary: Restablecer contraseña
-      tags:
-        - autenticación
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - token
-                - newPassword
-              properties:
-                token:
-                  type: string
-                newPassword:
-                  type: string
-                  format: password
-                  minLength: 8
-      responses:
-        '200':
-          description: Contraseña restablecida exitosamente
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-        '400':
-          description: Datos de entrada inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Token inválido o expirado
+        '500':
+          description: Error interno del servidor
           content:
             application/json:
               schema:
