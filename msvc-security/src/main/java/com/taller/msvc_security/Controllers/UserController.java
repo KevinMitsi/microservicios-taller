@@ -63,6 +63,7 @@ public class UserController {
             description = "Obtiene todos los usuarios de forma paginada",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Usuarios listados"),
+                    @ApiResponse(responseCode = "401", description = "No autorizado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
@@ -97,6 +98,7 @@ public class UserController {
             description = "Retorna la información detallada de un usuario por su ID",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Usuario encontrado"),
+                    @ApiResponse(responseCode = "401", description = "No autorizado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
@@ -129,6 +131,7 @@ public class UserController {
             responses = {
                     @ApiResponse(responseCode = "200", description = "Usuario actualizado"),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
+                    @ApiResponse(responseCode = "401", description = "No autorizado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
                     @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
@@ -154,8 +157,10 @@ public class UserController {
         try {
             UserDocument updatedUser = userService.updateUser(id, updateRequest);
             return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
     }
 
@@ -168,6 +173,7 @@ public class UserController {
             description = "Elimina un usuario del sistema",
             responses = {
                     @ApiResponse(responseCode = "204", description = "Usuario eliminado"),
+                    @ApiResponse(responseCode = "401", description = "No autorizado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
@@ -195,10 +201,11 @@ public class UserController {
      */
     @PostMapping("/auth/login")
     @Operation(
-            summary = "Iniciar sesión",
+            summary = "Inicio de sesión de usuario",
             description = "Autentica un usuario y retorna un token JWT",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Autenticación exitosa"),
+                    @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso"),
+                    @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
                     @ApiResponse(responseCode = "401", description = "Credenciales inválidas"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
@@ -208,6 +215,8 @@ public class UserController {
         try {
             AuthResponse authResponse = userService.login(loginRequest);
             return ResponseEntity.ok(authResponse);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
@@ -218,10 +227,10 @@ public class UserController {
      */
     @PostMapping("/auth/tokens")
     @Operation(
-            summary = "Recuperación de contraseña",
+            summary = "Solicitar recuperación de contraseña",
             description = "Solicita el envío de un correo con instrucciones para recuperar contraseña",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Correo enviado"),
+                    @ApiResponse(responseCode = "200", description = "Correo de recuperación de contraseña enviado"),
                     @ApiResponse(responseCode = "400", description = "Email no válido"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
                     @ApiResponse(responseCode = "404", description = "Email no encontrado"),
@@ -252,7 +261,7 @@ public class UserController {
             summary = "Restablecer contraseña de usuario",
             description = "Permite restablecer la contraseña usando un token de recuperación",
             responses = {
-                    @ApiResponse(responseCode = "200", description = "Contraseña restablecida"),
+                    @ApiResponse(responseCode = "200", description = "Contraseña restablecida exitosamente"),
                     @ApiResponse(responseCode = "400", description = "Token o contraseña inválida"),
                     @ApiResponse(responseCode = "401", description = "Token inválido o expirado"),
                     @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
@@ -283,12 +292,12 @@ public class UserController {
 
     @PutMapping("/users/{id}/roles")
     @Operation(
-            summary = "Actualizar roles de usuario",
-            description = "Permite a un administrador modificar los roles de un usuario",
+            summary = "Actualizar roles de usuario (temporal)",
+            description = "Permite a un administrador modificar los roles de un usuario.  \n**Nota:** Este endpoint es temporal y solo debe usarse para pruebas o administración especial.",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Roles actualizados"),
                     @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
+                    @ApiResponse(responseCode = "403", description = "Prohibido - Permisos insuficientes"),
                     @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
                     @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
@@ -309,8 +318,10 @@ public class UserController {
         try {
             UserDocument updatedUser = userService.updateUserRoles(id, roles);
             return ResponseEntity.ok(updatedUser);
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
         }
     }
 }

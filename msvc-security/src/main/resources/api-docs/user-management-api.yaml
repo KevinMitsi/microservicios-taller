@@ -94,7 +94,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -134,7 +134,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -191,7 +191,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -238,7 +238,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -358,7 +358,7 @@ paths:
                   message:
                     type: string
         '400':
-          description: Datos de entrada inválidos
+          description: Token o contraseña inválida
           content:
             application/json:
               schema:
@@ -370,7 +370,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -381,7 +381,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /api/auth/login:
     post:
       # Autenticación de usuario
@@ -414,7 +413,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
@@ -454,13 +453,13 @@ paths:
                   message:
                     type: string
         '400':
-          description: Datos de entrada inválidos
+          description: Email no válido
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
-          description: Prohibido - Permisos insuficientes
+          description: Acceso prohibido
           content:
             application/json:
               schema:
