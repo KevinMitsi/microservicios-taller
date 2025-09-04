@@ -216,7 +216,7 @@ public class UserController {
     /**
      * Endpoint para solicitar recuperación de contraseña
      */
-    @PostMapping("/auth/password-recovery")
+    @PostMapping("/auth/tokens")
     @Operation(
             summary = "Recuperación de contraseña",
             description = "Solicita el envío de un correo con instrucciones para recuperar contraseña",
@@ -245,11 +245,11 @@ public class UserController {
     }
 
     /**
-     * Endpoint para restablecer contraseña con token
+     * Endpoint para restablecer contraseña con token y usuario
      */
-    @PatchMapping("/auth/password-reset")
+    @PatchMapping("/users/{id}/password")
     @Operation(
-            summary = "Restablecer contraseña",
+            summary = "Restablecer contraseña de usuario",
             description = "Permite restablecer la contraseña usando un token de recuperación",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Contraseña restablecida"),
@@ -259,7 +259,9 @@ public class UserController {
                     @ApiResponse(responseCode = "500", description = "Error interno del servidor")
             }
     )
-    public ResponseEntity<Map<String, String>> resetPassword(@RequestBody Map<String, String> request) {
+    public ResponseEntity<Map<String, String>> resetPassword(
+            @PathVariable String id,
+            @RequestBody Map<String, String> request) {
         String token = request.get("token");
         String newPassword = request.get("newPassword");
 
@@ -268,7 +270,7 @@ public class UserController {
         }
 
         try {
-            userService.resetPassword(token, newPassword);
+            userService.resetPasswordForUser(id, token, newPassword);
             Map<String, String> response = new HashMap<>();
             response.put("message", "Contraseña restablecida correctamente");
             return ResponseEntity.ok(response);
