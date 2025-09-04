@@ -271,5 +271,19 @@ public class UserServiceImpl implements UserService {
         tokenRepository.delete(resetToken);
     }
 
-}
+    @Override
+    public Page<UserDocument> getAllUsersFiltered(Pageable pageable, String firstName, String lastName) {
+        if ((firstName == null || firstName.isBlank()) && (lastName == null || lastName.isBlank())) {
+            return userRepository.findAll(pageable);
+        }
+        if (firstName != null && !firstName.isBlank() && (lastName == null || lastName.isBlank())) {
+            return userRepository.findByFirstNameContainingIgnoreCase(firstName, pageable);
+        }
+        if ((firstName == null || firstName.isBlank()) && lastName != null && !lastName.isBlank()) {
+            return userRepository.findByLastNameContainingIgnoreCase(lastName, pageable);
+        }
+        // Ambos filtros presentes
+        return userRepository.findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(firstName, lastName, pageable);
+    }
 
+}

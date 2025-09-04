@@ -117,4 +117,13 @@ public interface UserService {
     Page<UserDocument> searchUsers(String searchTerm, Pageable pageable);
     Optional<UserDocument>getUserByUsername(String username);
     UserDocument updateUserRoles(String id, Set<Role> roles);
+
+    /**
+     * Obtiene una lista paginada de usuarios filtrando por nombre y apellido (opcional)
+     * @param pageable configuración de paginación
+     * @param firstName filtro de nombre (opcional)
+     * @param lastName filtro de apellido (opcional)
+     * @return página de usuarios filtrados
+     */
+    Page<UserDocument> getAllUsersFiltered(Pageable pageable, String firstName, String lastName);
 }

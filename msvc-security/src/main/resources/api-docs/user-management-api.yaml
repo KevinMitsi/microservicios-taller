@@ -46,7 +46,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
     get:
-      # Listado paginado de usuarios
+      # Listado paginado y filtrado de usuarios
       summary: Listar todos los usuarios
       tags:
         - usuarios
@@ -65,6 +65,18 @@ paths:
           schema:
             type: integer
             default: 10
+        - name: firstName
+          in: query
+          description: Filtrar por nombre (coincidencia parcial, opcional)
+          required: false
+          schema:
+            type: string
+        - name: lastName
+          in: query
+          description: Filtrar por apellido (coincidencia parcial, opcional)
+          required: false
+          schema:
+            type: string
       security:
         - bearerAuth: []
       responses:

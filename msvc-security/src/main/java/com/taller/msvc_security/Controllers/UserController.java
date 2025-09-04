@@ -60,7 +60,7 @@ public class UserController {
     @GetMapping("/users")
     @Operation(
             summary = "Listar usuarios",
-            description = "Obtiene todos los usuarios de forma paginada",
+            description = "Obtiene todos los usuarios de forma paginada y permite filtrar por nombre y apellido",
             responses = {
                     @ApiResponse(responseCode = "200", description = "Usuarios listados"),
                     @ApiResponse(responseCode = "401", description = "No autorizado"),
@@ -70,11 +70,13 @@ public class UserController {
     )
     public ResponseEntity<Map<String, Object>> getAllUsers(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String firstName,
+            @RequestParam(required = false) String lastName) {
 
         try {
             Pageable paging = PageRequest.of(page, size);
-            Page<UserDocument> usersPage = userService.getAllUsers(paging);
+            Page<UserDocument> usersPage = userService.getAllUsersFiltered(paging, firstName, lastName);
 
             Map<String, Object> response = new HashMap<>();
             response.put("content", usersPage.getContent());

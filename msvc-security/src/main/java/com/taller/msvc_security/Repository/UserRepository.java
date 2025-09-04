@@ -26,4 +26,13 @@ public interface UserRepository extends MongoRepository<UserDocument, String> {
     // Search users by any field
     Page<UserDocument> findByUsernameContainingOrEmailContainingOrFirstNameContainingOrLastNameContaining(
             String username, String email, String firstName, String lastName, Pageable pageable);
+
+    // Filtrar por nombre (firstName) ignorando mayúsculas/minúsculas
+    Page<UserDocument> findByFirstNameContainingIgnoreCase(String firstName, Pageable pageable);
+
+    // Filtrar por apellido (lastName) ignorando mayúsculas/minúsculas
+    Page<UserDocument> findByLastNameContainingIgnoreCase(String lastName, Pageable pageable);
+
+    // Filtrar por nombre y apellido (ambos) ignorando mayúsculas/minúsculas
+    Page<UserDocument> findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(String firstName, String lastName, Pageable pageable);
 }
