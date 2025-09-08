@@ -6,8 +6,18 @@ import com.taller.msvc_security.Models.*;
 import com.taller.msvc_security.Services.UserService;
 import com.taller.msvc_security.utils.SecurityUtils;
 import io.swagger.v3.oas.annotations.Operation;
-
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeIn;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.enums.ParameterIn;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +35,14 @@ import java.util.Set;
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
+@SecurityScheme(
+        name = "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT",
+        in = SecuritySchemeIn.HEADER
+)
+@Tag(name = "usuarios", description = "Operaciones para gestión de usuarios y autenticación")
 public class UserController {
 
     private final UserService userService;
@@ -33,16 +51,33 @@ public class UserController {
      * Endpoint para registrar un nuevo usuario
      */
     @PostMapping("/users")
-    @Operation(
-            summary = "Crear usuario",
-            description = "Registra un nuevo usuario en el sistema",
-            responses = {
-                    @ApiResponse(responseCode = "201", description = "Usuario creado"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Datos para registrar un usuario",
+            required = true,
+            content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = UserRegistrationRequest.class)
+            )
     )
+    @Operation(
+            summary = "Registrar nuevo usuario",
+            description = "Registra un nuevo usuario en el sistema",
+            tags = {"usuarios"}
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Usuario creado exitosamente",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = UserDocument.class))),
+            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "409", description = "El usuario ya existe",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<UserDocument> registerUser(@RequestBody UserRegistrationRequest request) {
         try {
             UserDocument createdUser = userService.registerUser(request);
@@ -59,19 +94,30 @@ public class UserController {
      */
     @GetMapping("/users")
     @Operation(
-            summary = "Listar usuarios",
-            description = "Obtiene todos los usuarios de forma paginada y permite filtrar por nombre y apellido",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Usuarios listados"),
-                    @ApiResponse(responseCode = "401", description = "No autorizado"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            summary = "Listar todos los usuarios",
+            description = "Listado paginado y filtrado de usuarios. Requiere autenticación Bearer.",
+            tags = {"usuarios"},
+            security = {@SecurityRequirement(name = "bearerAuth")}
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Lista de usuarios",
+                    content = @Content(mediaType = "application/json",
+                            array = @ArraySchema(schema = @Schema(implementation = UserDocument.class)))),
+            @ApiResponse(responseCode = "401", description = "No autorizado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<Map<String, Object>> getAllUsers(
+            @Parameter(name = "page", in = ParameterIn.QUERY, description = "Número de página", schema = @Schema(type = "integer", defaultValue = "0"))
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(name = "size", in = ParameterIn.QUERY, description = "Tamaño de página", schema = @Schema(type = "integer", defaultValue = "10"))
             @RequestParam(defaultValue = "10") int size,
+            @Parameter(name = "firstName", in = ParameterIn.QUERY, description = "Filtrar por nombre (coincidencia parcial, opcional)", schema = @Schema(type = "string"))
             @RequestParam(required = false) String firstName,
+            @Parameter(name = "lastName", in = ParameterIn.QUERY, description = "Filtrar por apellido (coincidencia parcial, opcional)", schema = @Schema(type = "string"))
             @RequestParam(required = false) String lastName) {
 
         try {
@@ -97,16 +143,26 @@ public class UserController {
     @GetMapping("/users/{id}")
     @Operation(
             summary = "Obtener usuario por ID",
-            description = "Retorna la información detallada de un usuario por su ID",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Usuario encontrado"),
-                    @ApiResponse(responseCode = "401", description = "No autorizado"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            description = "Retorna la información detallada de un usuario por su ID. Requiere autenticación Bearer.",
+            tags = {"usuarios"},
+            security = {@SecurityRequirement(name = "bearerAuth")}
     )
-    public ResponseEntity<UserDocument> getUserById(@PathVariable String id) {
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Detalles del usuario",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = UserDocument.class))),
+            @ApiResponse(responseCode = "401", description = "No autorizado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
+    public ResponseEntity<UserDocument> getUserById(
+            @Parameter(name = "id", in = ParameterIn.PATH, description = "ID del usuario (UUID)", required = true, schema = @Schema(type = "string", format = "uuid"))
+            @PathVariable String id) {
         String currentUsername = SecurityUtils.getCurrentUsername();
         Optional<UserDocument> userOpt = userService.getUserById(id);
 
@@ -127,20 +183,35 @@ public class UserController {
      * Endpoint para actualizar un usuario existente
      */
     @PutMapping("/users/{id}")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Datos para actualizar el usuario",
+            required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserUpdateRequest.class))
+    )
     @Operation(
             summary = "Actualizar usuario",
-            description = "Permite modificar los datos de un usuario existente",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Usuario actualizado"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-                    @ApiResponse(responseCode = "401", description = "No autorizado"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
-                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            description = "Permite modificar los datos de un usuario existente. Requiere autenticación Bearer.",
+            tags = {"usuarios"},
+            security = {@SecurityRequirement(name = "bearerAuth")}
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Usuario actualizado exitosamente",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDocument.class))),
+            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "401", description = "No autorizado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<UserDocument> updateUser(
+            @Parameter(name = "id", in = ParameterIn.PATH, description = "ID del usuario (UUID)", required = true, schema = @Schema(type = "string", format = "uuid"))
             @PathVariable String id,
             @RequestBody UserUpdateRequest updateRequest) {
 
@@ -172,16 +243,24 @@ public class UserController {
     @DeleteMapping("/users/{id}")
     @Operation(
             summary = "Eliminar usuario",
-            description = "Elimina un usuario del sistema",
-            responses = {
-                    @ApiResponse(responseCode = "204", description = "Usuario eliminado"),
-                    @ApiResponse(responseCode = "401", description = "No autorizado"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            description = "Elimina un usuario del sistema. Requiere autenticación Bearer.",
+            tags = {"usuarios"},
+            security = {@SecurityRequirement(name = "bearerAuth")}
     )
-    public ResponseEntity<Void> deleteUser(@PathVariable String id) {
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Usuario eliminado exitosamente"),
+            @ApiResponse(responseCode = "401", description = "No autorizado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
+    public ResponseEntity<Void> deleteUser(
+            @Parameter(name = "id", in = ParameterIn.PATH, description = "ID del usuario (UUID)", required = true, schema = @Schema(type = "string", format = "uuid"))
+            @PathVariable String id) {
         String currentUsername = SecurityUtils.getCurrentUsername();
         Optional<UserDocument> userOpt = userService.getUserById(id);
 
@@ -202,17 +281,28 @@ public class UserController {
      * Endpoint para autenticación de usuarios
      */
     @PostMapping("/auth/login")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Credenciales de usuario para autenticación",
+            required = true,
+            content = @Content(mediaType = "application/json", schema = @Schema(implementation = LoginRequest.class))
+    )
     @Operation(
             summary = "Inicio de sesión de usuario",
             description = "Autentica un usuario y retorna un token JWT",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso"),
-                    @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos"),
-                    @ApiResponse(responseCode = "401", description = "Credenciales inválidas"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            tags = {"autenticación"}
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Inicio de sesión exitoso",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Datos de entrada inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "401", description = "Credenciales inválidas",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         try {
             AuthResponse authResponse = userService.login(loginRequest);
@@ -228,17 +318,30 @@ public class UserController {
      * Endpoint para solicitar recuperación de contraseña
      */
     @PostMapping("/auth/tokens")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Solicitud de recuperación de contraseña (email)",
+            required = true,
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = "object", requiredProperties = {"email"},
+                            description = "Ej: {\"email\":\"usuario@ejemplo.com\"}"))
+    )
     @Operation(
             summary = "Solicitar recuperación de contraseña",
-            description = "Solicita el envío de un correo con instrucciones para recuperar contraseña",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Correo de recuperación de contraseña enviado"),
-                    @ApiResponse(responseCode = "400", description = "Email no válido"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "404", description = "Email no encontrado"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            description = "Solicitar envío de correo de recuperación",
+            tags = {"autenticación"}
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Correo de recuperación de contraseña enviado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(example = "{\"message\":\"...\"}"))),
+            @ApiResponse(responseCode = "400", description = "Email no válido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "404", description = "Email no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<Map<String, String>> requestPasswordRecovery(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         if (email == null || email.isEmpty()) {
@@ -259,18 +362,32 @@ public class UserController {
      * Endpoint para restablecer contraseña con token y usuario
      */
     @PatchMapping("/users/{id}/password")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Token de recuperación y nueva contraseña. newPassword mínimo 8 caracteres.",
+            required = true,
+            content = @Content(mediaType = "application/json",
+                    schema = @Schema(type = "object", requiredProperties = {"token", "newPassword"},
+                            example = "{\"token\":\"abc123\",\"newPassword\":\"NuevaPass123\"}"))
+    )
     @Operation(
             summary = "Restablecer contraseña de usuario",
             description = "Permite restablecer la contraseña usando un token de recuperación",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Contraseña restablecida exitosamente"),
-                    @ApiResponse(responseCode = "400", description = "Token o contraseña inválida"),
-                    @ApiResponse(responseCode = "401", description = "Token inválido o expirado"),
-                    @ApiResponse(responseCode = "403", description = "Acceso prohibido"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            tags = {"usuarios"}
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Contraseña restablecida exitosamente",
+                    content = @Content(mediaType = "application/json", schema = @Schema(example = "{\"message\":\"Contraseña restablecida correctamente\"}"))),
+            @ApiResponse(responseCode = "400", description = "Token o contraseña inválida",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "401", description = "Token inválido o expirado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Acceso prohibido",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<Map<String, String>> resetPassword(
+            @Parameter(name = "id", in = ParameterIn.PATH, description = "ID del usuario (UUID)", required = true, schema = @Schema(type = "string", format = "uuid"))
             @PathVariable String id,
             @RequestBody Map<String, String> request) {
         String token = request.get("token");
@@ -293,19 +410,34 @@ public class UserController {
     }
 
     @PutMapping("/users/{id}/roles")
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+            description = "Lista de roles a asignar (ej: [\"ADMIN\",\"USER\"])",
+            required = true,
+            content = @Content(mediaType = "application/json",
+                    array = @ArraySchema(schema = @Schema(implementation = String.class)))
+    )
     @Operation(
             summary = "Actualizar roles de usuario (temporal)",
-            description = "Permite a un administrador modificar los roles de un usuario.  \n**Nota:** Este endpoint es temporal y solo debe usarse para pruebas o administración especial.",
-            responses = {
-                    @ApiResponse(responseCode = "200", description = "Roles actualizados"),
-                    @ApiResponse(responseCode = "400", description = "Datos inválidos"),
-                    @ApiResponse(responseCode = "403", description = "Prohibido - Permisos insuficientes"),
-                    @ApiResponse(responseCode = "404", description = "Usuario no encontrado"),
-                    @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe"),
-                    @ApiResponse(responseCode = "500", description = "Error interno del servidor")
-            }
+            description = "Permite a un administrador modificar los roles de un usuario.  \nNota: Este endpoint es temporal y solo debe usarse para pruebas o administración especial.",
+            tags = {"usuarios"},
+            security = {@SecurityRequirement(name = "bearerAuth")}
     )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Roles actualizados",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = UserDocument.class))),
+            @ApiResponse(responseCode = "400", description = "Datos inválidos",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "403", description = "Prohibido - Permisos insuficientes",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "404", description = "Usuario no encontrado",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "409", description = "Conflicto, el usuario ya existe",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class))),
+            @ApiResponse(responseCode = "500", description = "Error interno del servidor",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Object.class)))
+    })
     public ResponseEntity<UserDocument> updateUserRoles(
+            @Parameter(name = "id", in = ParameterIn.PATH, description = "ID del usuario (UUID)", required = true, schema = @Schema(type = "string", format = "uuid"))
             @PathVariable String id,
             @RequestBody Set<Role> roles) {
 
