@@ -19,6 +19,7 @@
 	<name>microservicios</name>
 
 	<modules>
+		<module>msvc-orchestrator</module>
 		<module>msvc-saludo</module>
 		<module>msvc-security</module>
 		<module>msvc-consumer</module>

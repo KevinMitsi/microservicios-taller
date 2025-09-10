@@ -1,6 +1,18 @@
 version: "3.9"
 
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Web UI
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - msvc-net
+
   msvc-consumer:
     image: kevinmitsi/msvc-consumer:latest
     container_name: msvc-consumer
