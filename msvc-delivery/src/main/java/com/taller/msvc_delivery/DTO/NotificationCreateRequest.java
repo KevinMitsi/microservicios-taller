@@ -10,7 +10,7 @@ import java.util.Map;
 @AllArgsConstructor
 @NoArgsConstructor
 public class NotificationCreateRequest {
-    private String templateId; // opcional
+    private String templateId;
     private String channel;
     private String destination;
     private String subject;

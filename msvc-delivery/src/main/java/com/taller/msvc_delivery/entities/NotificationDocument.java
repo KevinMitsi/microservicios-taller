@@ -1,5 +1,6 @@
 package com.taller.msvc_delivery.entities;
 
+import com.taller.msvc_delivery.DTO.NotificationDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,5 +28,17 @@ public class NotificationDocument {
     private Instant createdAt;
     private Instant sentAt;
     private String errorMessage;
+
+
+
+    public NotificationDTO toDto( ) {
+        return new NotificationDTO(
+                getId(),
+                getChannel(),
+                getDestination(),
+                getBody(),
+                getSubject()
+        );
+    }
 
 }

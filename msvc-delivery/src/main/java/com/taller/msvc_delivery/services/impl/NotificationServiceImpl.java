@@ -71,7 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
 
 
         // 4) Construir DTO con notificationId y publicar usando el key normalizado del ChannelEntity
-        NotificationDTO dto = toDto(saved);
+        NotificationDTO dto = saved.toDto();
         rabbitTemplate.convertAndSend("exchange.notifications", channel.getKey(), dto);
 
         return saved;
@@ -127,14 +127,6 @@ public class NotificationServiceImpl implements NotificationService {
         return notification;
     }
 
-    private NotificationDTO toDto(NotificationDocument doc) {
-        return new NotificationDTO(
-                doc.getId(),
-                doc.getChannel(),
-                doc.getDestination(),
-                doc.getBody(),
-                doc.getSubject()
-        );
-    }
+
 
 }
