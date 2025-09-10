@@ -1,0 +1,27 @@
+spring:
+  rabbitmq:
+    host: rabbitmq
+    port: 5672
+    username: admin
+    password: admin
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME} # Usa una variable de entorno para mayor seguridad
+    password: ${MAIL_PASSWORD} # Usa una variable de entorno para mayor seguridad
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+twilio:
+  account-sid: TU_ACCOUNT_SID
+  auth-token: TU_AUTH_TOKEN
+  phone-number: "+1234567890" # Número asignado por Twilio
+
+
+
+
