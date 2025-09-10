@@ -1,3 +1,9 @@
 package com.taller.msvc_delivery.DTO;
 
-public record NotificationDTO(String chanel, String destination, String message) {}
+public record NotificationDTO(
+        String notificationId,
+        String channel,
+        String destination,
+        String message,
+        String subject
+) {}

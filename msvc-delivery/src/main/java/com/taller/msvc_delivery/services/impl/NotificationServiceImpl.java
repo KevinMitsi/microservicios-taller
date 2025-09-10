@@ -1,0 +1,140 @@
+package com.taller.msvc_delivery.services.impl;
+
+import com.taller.msvc_delivery.DTO.NotificationCreateRequest;
+import com.taller.msvc_delivery.DTO.NotificationDTO;
+import com.taller.msvc_delivery.DTO.NotificationSearchCriteria;
+import com.taller.msvc_delivery.entities.ChannelEntity;
+import com.taller.msvc_delivery.entities.NotificationDocument;
+import com.taller.msvc_delivery.entities.NotificationStatus;
+import com.taller.msvc_delivery.entities.TemplateEntity;
+import com.taller.msvc_delivery.repositories.NotificationRepository;
+import com.taller.msvc_delivery.repositories.TemplateRepository;
+import com.taller.msvc_delivery.services.ChannelService;
+import com.taller.msvc_delivery.services.NotificationService;
+import com.taller.msvc_delivery.services.TemplateService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.Example;
+import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+
+import java.time.Instant;
+import java.util.Optional;
+
+
+@Service
+@RequiredArgsConstructor
+public class NotificationServiceImpl implements NotificationService {
+    private final NotificationRepository notificationRepository;
+    private final TemplateService templateService;
+    private final RabbitTemplate rabbitTemplate;
+    private final ChannelService channelService;
+    private final TemplateRepository templateRepository;
+
+    @Override
+    public NotificationDocument createAndSend(NotificationCreateRequest notiRequest) {
+        // 1) Obtener y validar canal (usa la entidad, no el valor "crudo" del request)
+        ChannelEntity channel = channelService.getChannel(notiRequest.getChannel())
+                .orElseThrow(() -> new IllegalArgumentException("Canal no soportado: " + notiRequest.getChannel()));
+
+        if (!Boolean.TRUE.equals(channel.isEnabled())) {
+            throw new IllegalStateException("El canal '" + channel.getKey() + "' está deshabilitado.");
+        }
+
+        // 2) Construir documento (body/subject se sobreescriben si hay template)
+        NotificationDocument notification = buildDocumentFromRequest(notiRequest);
+
+        // normalizar el canal con el key de la entidad
+        notification.setChannel(channel.getKey());
+
+        if (notiRequest.getTemplateId() != null) {
+            TemplateEntity template = templateService.getTemplate(notiRequest.getTemplateId());
+            notification.setSubject(template.getSubject());
+            notification.setBody(templateService.render(template.getBody(), notiRequest.getData()));
+        } else {
+            // asegurar que si no se pasa body/subject en request, queden nulos o valores por defecto
+            if (notification.getBody() == null) {
+                notification.setBody(notiRequest.getBody());
+            }
+            if (notification.getSubject() == null) {
+                notification.setSubject(notiRequest.getSubject());
+            }
+        }
+
+        notification.setStatus(NotificationStatus.PENDING);
+        notification.setCreatedAt(Instant.now());
+
+        // 3) Persistir para obtener ID antes de publicar
+        NotificationDocument saved = notificationRepository.save(notification);
+
+
+        // 4) Construir DTO con notificationId y publicar usando el key normalizado del ChannelEntity
+        NotificationDTO dto = toDto(saved);
+        rabbitTemplate.convertAndSend("exchange.notifications", channel.getKey(), dto);
+
+        return saved;
+    }
+
+
+    @Override
+    public NotificationDocument schedule(NotificationCreateRequest req, Instant sendAt) {
+        NotificationDocument doc = buildDocumentFromRequest(req);
+        // render similar al anterior
+        doc.setScheduledAt(sendAt);
+        doc.setStatus(NotificationStatus.SCHEDULED);
+        doc.setCreatedAt(Instant.now());
+        return notificationRepository.save(doc);
+    }
+
+    // búsqueda con filtros: construye un Example o Query dinámico
+    @Override
+    public Page<NotificationDocument> search(NotificationSearchCriteria criteria, Pageable pageable) {
+        // Ejemplo simple usando ExampleMatcher (puede mejorarse con QueryDSL)
+        NotificationDocument probe = new NotificationDocument();
+        if (criteria.getChannel()!=null) probe.setChannel(criteria.getChannel());
+        if (criteria.getStatus()!=null) probe.setStatus(criteria.getStatus());
+        ExampleMatcher matcher = ExampleMatcher.matchingAll().withIgnoreNullValues();
+        Example<NotificationDocument> ex = Example.of(probe, matcher);
+        return notificationRepository.findAll(ex, pageable);
+    }
+
+    @Override
+    public Optional<NotificationDocument> findById(String id) {
+        return notificationRepository.findById(id);
+    }
+
+    @Override
+    public void cancel(String id) {
+        notificationRepository.findById(id).ifPresent(n -> {
+            if (n.getStatus()==NotificationStatus.SCHEDULED || n.getStatus()==NotificationStatus.PENDING) {
+                n.setStatus(NotificationStatus.CANCELLED);
+                notificationRepository.save(n);
+            } else {
+                throw new IllegalStateException("No se puede cancelar en estado " + n.getStatus());
+            }
+        });
+    }
+
+    private NotificationDocument buildDocumentFromRequest(NotificationCreateRequest request) {
+        NotificationDocument notification = new NotificationDocument();
+        notification.setChannel(request.getChannel());
+        notification.setDestination(request.getDestination());
+        notification.setData(request.getData());
+        notification.setSubject(request.getSubject());
+        notification.setBody(request.getBody());
+        return notification;
+    }
+
+    private NotificationDTO toDto(NotificationDocument doc) {
+        return new NotificationDTO(
+                doc.getId(),
+                doc.getChannel(),
+                doc.getDestination(),
+                doc.getBody(),
+                doc.getSubject()
+        );
+    }
+
+}
