@@ -21,12 +21,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.ott.InvalidOneTimeTokenException;
 import org.springframework.security.core.Authentication;
-
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
@@ -57,30 +55,9 @@ public class UserServiceImpl implements UserService {
             throw new UserAlreadyExistException("El correo electrónico ya está registrado");
         }
 
-        // Validar datos de entrada
-        if (registrationRequest.getUsername() == null || registrationRequest.getUsername().length() < 3) {
-            throw new IllegalArgumentException("El nombre de usuario debe tener al menos 3 caracteres");
-        }
-
-        if (registrationRequest.getPassword() == null || registrationRequest.getPassword().length() < 8) {
-            throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres");
-        }
-
         UserDocument user = mapUserDocument(registrationRequest);
 
         return userRepository.save(user);
-    }
-
-
-
-    @Override
-    public Page<UserDocument> getAllUsers(Pageable pageable) {
-        return userRepository.findAll(pageable);
-    }
-
-    @Override
-    public Optional<UserDocument> getUserById(String id) {
-        return userRepository.findById(id);
     }
 
     @Override
@@ -293,6 +270,16 @@ public class UserServiceImpl implements UserService {
 
         user.addRole(Role.USER);
         return user;
+    }
+
+    @Override
+    public Page<UserDocument> getAllUsers(Pageable pageable) {
+        return userRepository.findAll(pageable);
+    }
+
+    @Override
+    public Optional<UserDocument> getUserById(String id) {
+        return userRepository.findById(id);
     }
 
 }

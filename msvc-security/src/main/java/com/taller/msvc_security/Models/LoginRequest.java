@@ -1,5 +1,6 @@
 package com.taller.msvc_security.Models;
 
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -8,8 +9,9 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class LoginRequest {
+    @NotBlank(message = "El nombre de usuario es obligatorio")
     private String username;
-    private String password;
 
-    // Getters and Setters
+    @NotBlank(message = "La contraseña es obligatoria")
+    private String password;
 }
