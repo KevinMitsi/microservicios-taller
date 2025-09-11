@@ -29,15 +29,15 @@ public class SmsConsumerImpl implements SmsConsumer {
             Twilio.init(accountSid, authToken);
 
             Message message = Message.creator(
-                    new com.twilio.type.PhoneNumber(notification.destination()),
+                    new com.twilio.type.PhoneNumber(notification.getDestination()),
                     new com.twilio.type.PhoneNumber(fromNumber),
-                    notification.message()
+                    notification.getMessage()
             ).create();
 
-            log.info("✅ SMS enviado a {} con SID {}", notification.destination(), message.getSid());
+            log.info("✅ SMS enviado a {} con SID {}", notification.getDestination(), message.getSid());
 
         } catch (Exception e) {
-            log.error("❌ Error al enviar SMS a {}: {}", notification.destination(), e.getMessage());
+            log.error("❌ Error al enviar SMS a {}: {}", notification.getDestination(), e.getMessage());
         }
     }
 }
