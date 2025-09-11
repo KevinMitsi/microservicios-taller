@@ -25,13 +25,13 @@ public class EmailConsumerImpl implements EmailConsumer {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            helper.setTo(notification.destination());
+            helper.setTo(notification.getDestination());
             helper.setSubject("Notificación del sistema");
-            helper.setText(notification.message(), true); // true para HTML
+            helper.setText(notification.getMessage(), true); // true para HTML
 
             mailSender.send(message);
 
-            log.info("✅ Email enviado a {}", notification.destination());
+            log.info("✅ Email enviado a {}", notification.getDestination());
 
         } catch (MessagingException e) {
             log.error("❌ Error al enviar Email: {}", e.getMessage());

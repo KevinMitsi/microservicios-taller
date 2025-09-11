@@ -8,7 +8,7 @@ import com.taller.msvc_delivery.entities.NotificationDocument;
 import com.taller.msvc_delivery.entities.NotificationStatus;
 import com.taller.msvc_delivery.entities.TemplateEntity;
 import com.taller.msvc_delivery.repositories.NotificationRepository;
-import com.taller.msvc_delivery.repositories.TemplateRepository;
+
 import com.taller.msvc_delivery.services.ChannelService;
 import com.taller.msvc_delivery.services.NotificationService;
 import com.taller.msvc_delivery.services.TemplateService;
@@ -31,7 +31,6 @@ public class NotificationServiceImpl implements NotificationService {
     private final TemplateService templateService;
     private final RabbitTemplate rabbitTemplate;
     private final ChannelService channelService;
-    private final TemplateRepository templateRepository;
 
     @Override
     public NotificationDocument createAndSend(NotificationCreateRequest notiRequest) {
@@ -72,7 +71,7 @@ public class NotificationServiceImpl implements NotificationService {
 
         // 4) Construir DTO con notificationId y publicar usando el key normalizado del ChannelEntity
         NotificationDTO dto = saved.toDto();
-        rabbitTemplate.convertAndSend("exchange.notifications", channel.getKey(), dto);
+        rabbitTemplate.convertAndSend("queue."+channel.getKey(), dto);
 
         return saved;
     }

@@ -1,9 +1,17 @@
 package com.taller.msvc_delivery.DTO;
 
-public record NotificationDTO(
-        String notificationId,
-        String channel,
-        String destination,
-        String message,
-        String subject
-) {}
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+ @Data
+ @NoArgsConstructor
+ @AllArgsConstructor
+public class NotificationDTO {
+    private String notificationId;
+    private String channel;
+    private String destination;
+    private String message;
+    private String subject;
+
+}
