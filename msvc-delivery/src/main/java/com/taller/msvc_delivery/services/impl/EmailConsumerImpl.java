@@ -26,7 +26,7 @@ public class EmailConsumerImpl implements EmailConsumer {
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
             helper.setTo(notification.getDestination());
-            helper.setSubject("Notificación del sistema");
+            helper.setSubject(notification.getSubject());
             helper.setText(notification.getMessage(), true); // true para HTML
 
             mailSender.send(message);
