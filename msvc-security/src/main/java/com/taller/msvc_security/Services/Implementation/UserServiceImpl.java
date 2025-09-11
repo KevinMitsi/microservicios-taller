@@ -66,17 +66,12 @@ public class UserServiceImpl implements UserService {
             throw new IllegalArgumentException("La contraseña debe tener al menos 8 caracteres");
         }
 
-        // Crear nuevo usuario usando Lombok
-        UserDocument user = new UserDocument();
-        user.setUsername(registrationRequest.getUsername());
-        user.setEmail(registrationRequest.getEmail());
-        user.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
-        user.setFirstName(registrationRequest.getFirstName());
-        user.setLastName(registrationRequest.getLastName());
+        UserDocument user = mapUserDocument(registrationRequest);
 
-        user.addRole(Role.USER);
         return userRepository.save(user);
     }
+
+
 
     @Override
     public Page<UserDocument> getAllUsers(Pageable pageable) {
@@ -251,7 +246,7 @@ public class UserServiceImpl implements UserService {
 
         // Verificar que el token corresponde al usuario
         if (!resetToken.getUserId().equals(userId)) {
-            throw new RuntimeException("El token no corresponde al usuario");
+            throw new InvalidOneTimeTokenException("El token no corresponde al usuario");
         }
 
         // Validar la nueva contraseña
@@ -284,6 +279,20 @@ public class UserServiceImpl implements UserService {
         }
         // Ambos filtros presentes
         return userRepository.findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(firstName, lastName, pageable);
+    }
+
+    private UserDocument mapUserDocument(UserRegistrationRequest registrationRequest) {
+        // Crear nuevo usuario usando Lombok
+        UserDocument user = new UserDocument();
+        user.setUsername(registrationRequest.getUsername());
+        user.setEmail(registrationRequest.getEmail());
+        user.setMobileNumber(registrationRequest.getMobileNumber());
+        user.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
+        user.setFirstName(registrationRequest.getFirstName());
+        user.setLastName(registrationRequest.getLastName());
+
+        user.addRole(Role.USER);
+        return user;
     }
 
 }

@@ -25,6 +25,9 @@ public class UserDocument {
     @Indexed(unique = true)
     private String email;
 
+    @Indexed(unique = true)
+    private String mobileNumber;
+
     private String password;
 
     private String firstName;
