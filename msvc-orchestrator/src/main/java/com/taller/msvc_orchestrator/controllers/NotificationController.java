@@ -6,6 +6,7 @@ import com.taller.msvc_orchestrator.entities.ChannelEntity;
 import com.taller.msvc_orchestrator.entities.NotificationDocument;
 import com.taller.msvc_orchestrator.services.ChannelService;
 import com.taller.msvc_orchestrator.services.NotificationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -28,16 +29,14 @@ public class NotificationController {
     public List<ChannelEntity> getChannels() { return channelService.getAvailableChannels(); }
 
     @PostMapping
-    public ResponseEntity<NotificationDocument> createAndSend(@RequestBody NotificationCreateRequest req) {
-        NotificationDocument saved = notificationService.createAndSend(req);
+    public ResponseEntity<NotificationDocument> createAndSend(@Valid @RequestBody NotificationCreateRequest req) {
+        NotificationDocument saved;
+        if (req.getSendAt() != null) {
+            saved = notificationService.schedule(req, req.getSendAt());
+        } else {
+            saved = notificationService.createAndSend(req);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
-    }
-
-    @PostMapping("/schedule")
-    public ResponseEntity<NotificationDocument> schedule(@RequestBody NotificationCreateRequest req,
-                                                         @RequestParam("sendAt") Instant sendAt) {
-        NotificationDocument doc = notificationService.schedule(req, sendAt);
-        return new ResponseEntity<>(doc, HttpStatus.CREATED);
     }
 
     @GetMapping
