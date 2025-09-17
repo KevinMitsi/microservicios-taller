@@ -39,6 +39,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public NotificationDocument createAndSend(NotificationCreateRequest notiRequest) {
+
+        System.out.println(channelService.getChannel(notiRequest.getChannel()));
         // 1) Obtener y validar canal (usa la entidad, no el valor "crudo" del request)
         ChannelEntity channel = channelService.getChannel(notiRequest.getChannel())
                 .orElseThrow(() -> new IllegalArgumentException("Canal no soportado: " + notiRequest.getChannel()));
@@ -76,9 +78,14 @@ public class NotificationServiceImpl implements NotificationService {
 
         // 4) Construir DTO con notificationId y publicar usando el key normalizado del ChannelEntity
         NotificationDTO dto = saved.toDto();
-        rabbitTemplate.convertAndSend(NOTIFICATIONS_SENDING_METHOD,channel.getKey(), dto);
-
-        return saved;
+        try {
+            rabbitTemplate.convertAndSend(NOTIFICATIONS_SENDING_METHOD, channel.getKey(), dto);
+            saved.setStatus(NotificationStatus.SENT);
+            saved.setSentAt(Instant.now());
+        } catch (Exception e) {
+            saved.setStatus(NotificationStatus.FAILED);
+        }
+        return notificationRepository.save(saved);
     }
 
 
