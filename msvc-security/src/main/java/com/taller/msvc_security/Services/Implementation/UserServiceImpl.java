@@ -3,17 +3,16 @@ package com.taller.msvc_security.Services.Implementation;
 import com.taller.msvc_security.Entities.PasswordResetToken;
 import com.taller.msvc_security.Entities.Role;
 import com.taller.msvc_security.Entities.UserDocument;
-import com.taller.msvc_security.Models.AuthResponse;
-import com.taller.msvc_security.Models.LoginRequest;
-import com.taller.msvc_security.Models.UserRegistrationRequest;
-import com.taller.msvc_security.Models.UserUpdateRequest;
+import com.taller.msvc_security.Models.*;
 import com.taller.msvc_security.Repository.PasswordResetTokenRepository;
 import com.taller.msvc_security.Repository.UserRepository;
 import com.taller.msvc_security.exception.InvalidCredentialsException;
 import com.taller.msvc_security.exception.UserAlreadyExistException;
+import com.taller.msvc_security.http.HttpOrchestratorClient;
 import com.taller.msvc_security.utils.JwtUtils;
 import com.taller.msvc_security.Services.UserService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -25,6 +24,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
@@ -32,21 +32,50 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserServiceImpl implements UserService {
+
+    public static final String CHANNEL_EMAIL = "email";
+    public static final String CHANNEL_SMS = "sms";
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
+    private final HttpOrchestratorClient httpOrchestratorClient;
     private final JwtUtils jwtUtils;
 
     @Value("${jwt.expiration-minutes:60}")
     private Integer jwtExpirationMinutes;
 
+
+    private void sendNotification(String channel, String destination, String subject, String body) {
+        if (destination == null || destination.isBlank()) {
+            log.warn("No se envía notificación por {}: destination vacía", channel);
+            return;
+        }
+
+        try {
+            NotificationCreateRequest notif = new NotificationCreateRequest();
+            notif.setChannel(channel);
+            notif.setDestination(destination);
+            notif.setSubject(subject);
+            notif.setBody(body);
+            httpOrchestratorClient.createAndSend(notif);
+            log.info("Notificación solicitada: canal={}, destino={}", channel, destination);
+        } catch (Exception e) {
+            log.error("Error al solicitar envío de notificación (canal={}, destino={}): {}",
+                    channel, destination, e.getMessage());
+        }
+    }
+
+    // -------------------------
+    // REGLAS DE NEGOCIO
+    // -------------------------
+
     @Override
     @Transactional
     public UserDocument registerUser(UserRegistrationRequest registrationRequest) {
-        // Validar que el usuario no exista
         if (existsByUsername(registrationRequest.getUsername())) {
             throw new UserAlreadyExistException("El nombre de usuario ya está en uso");
         }
@@ -56,25 +85,32 @@ public class UserServiceImpl implements UserService {
         }
 
         UserDocument user = mapUserDocument(registrationRequest);
+        UserDocument saved = userRepository.save(user);
 
-        return userRepository.save(user);
+        // Preparar mensaje
+        String subject = "Bienvenido a la plataforma";
+        String body = "Hola " + (saved.getFirstName() != null ? saved.getFirstName() : saved.getUsername())
+                + ", tu usuario fue registrado con éxito.";
+
+        // Enviar email y sms (si existe número)
+        sendNotification(CHANNEL_EMAIL, saved.getEmail(), subject, body);
+        sendNotification(CHANNEL_SMS, saved.getMobileNumber(), subject, body);
+
+        return saved;
     }
 
     @Override
     @Transactional
     public UserDocument updateUser(String id, UserUpdateRequest updateRequest) {
-        // Buscar el usuario por ID
         UserDocument user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
 
-        // Verificar si el email ya está en uso por otro usuario
         if (updateRequest.getEmail() != null &&
                 !updateRequest.getEmail().equals(user.getEmail()) &&
                 existsByEmail(updateRequest.getEmail())) {
             throw new UserAlreadyExistException("El correo electrónico ya está en uso por otro usuario");
         }
 
-        // Actualizar los campos que no son nulos - podemos usar los setters gracias a @Data
         if (updateRequest.getFirstName() != null) {
             user.setFirstName(updateRequest.getFirstName());
         }
@@ -94,9 +130,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public void deleteUser(String id) {
         if (userRepository.existsById(id)) {
-            // Eliminar tokens asociados primero
             tokenRepository.deleteByUserId(id);
-            // Eliminar el usuario
             userRepository.deleteById(id);
         }
     }
@@ -104,7 +138,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public AuthResponse login(LoginRequest loginRequest) {
         try {
-            // Autenticar las credenciales
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getUsername(),
@@ -114,19 +147,22 @@ public class UserServiceImpl implements UserService {
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
-            // Obtener usuario autenticado
             UserDocument user = userRepository.findByUsername(loginRequest.getUsername())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            // Generar token JWT con roles
             String jwt = jwtUtils.generateToken(user.getUsername(), user.getAuthorities());
 
-            // Crear respuesta de autenticación
             AuthResponse authResponse = new AuthResponse();
             authResponse.setToken(jwt);
             authResponse.setTokenType("Bearer");
             authResponse.setExpiresIn(jwtExpirationMinutes * 60); // minutos → segundos
             authResponse.setUser(user);
+
+            // Notificar login exitoso (email + sms si aplica)
+            String subject = "Inicio de sesión exitoso";
+            String body = "Has iniciado sesión en el sistema en " + LocalDateTime.now();
+            sendNotification(CHANNEL_EMAIL, user.getEmail(), subject, body);
+            sendNotification(CHANNEL_SMS, user.getMobileNumber(), subject, body);
 
             return authResponse;
         } catch (Exception e) {
@@ -134,35 +170,27 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-
     @Override
-        @Transactional
-        public void requestPasswordRecovery(String email) {
-            // Buscar usuario por email
-            UserDocument user = userRepository.findByEmail(email)
-                    .orElseThrow(() -> new RuntimeException("No se encontró un usuario con este correo electrónico"));
+    @Transactional
+    public void requestPasswordRecovery(String email) {
+        UserDocument user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("No se encontró un usuario con este correo electrónico"));
 
-            // Verificar si ya existe un token válido
-            LocalDateTime now = LocalDateTime.now();
-            if (tokenRepository.existsByUserIdAndExpiryDateAfter(user.getId(), now)) {
-                // Si existe, eliminar tokens anteriores
-                tokenRepository.deleteByUserId(user.getId());
-            }
+        LocalDateTime now = LocalDateTime.now();
+        if (tokenRepository.existsByUserIdAndExpiryDateAfter(user.getId(), now)) {
+            tokenRepository.deleteByUserId(user.getId());
+        }
 
-            // Generar nuevo token - podemos usar el constructor con argumentos gracias a @AllArgsConstructor
-            String tokenStr = UUID.randomUUID().toString();
-            LocalDateTime expiryDate = LocalDateTime.now().plusHours(1); // expira en 1 hora
-            PasswordResetToken resetToken = new PasswordResetToken(
-                    null,                // id (MongoDB lo genera solo)
-                    tokenStr,            // token generado con UUID
-                    user.getId(),        // id del usuario
-                    expiryDate           // fecha de expiración
-            );
+        String tokenStr = UUID.randomUUID().toString();
+        LocalDateTime expiryDate = LocalDateTime.now().plusHours(1);
+        PasswordResetToken resetToken = new PasswordResetToken(null, tokenStr, user.getId(), expiryDate);
+        tokenRepository.save(resetToken);
 
-            tokenRepository.save(resetToken);
+        String subject = "Recuperación de contraseña";
+        String body = "Usa este token para recuperar tu clave: " + tokenStr;
 
-
-
+        sendNotification(CHANNEL_EMAIL, user.getEmail(), subject, body);
+        sendNotification(CHANNEL_SMS, user.getMobileNumber(), subject, body);
     }
 
     @Override
@@ -192,9 +220,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    // En UserService.java
     public Optional<UserDocument> getUserByUsername(String username) {
-        // Implementación para buscar un usuario por su nombre de usuario
         return userRepository.findByUsername(username);
     }
 
@@ -211,35 +237,34 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional
     public void resetPasswordForUser(String userId, String token, String newPassword) {
-        // Validar el token
         PasswordResetToken resetToken = tokenRepository.findByToken(token)
                 .orElseThrow(() -> new RuntimeException("Token inválido"));
 
-        // Verificar si el token ha expirado
         if (resetToken.isExpired()) {
             tokenRepository.delete(resetToken);
             throw new InvalidOneTimeTokenException("El token ha expirado");
         }
 
-        // Verificar que el token corresponde al usuario
         if (!resetToken.getUserId().equals(userId)) {
             throw new InvalidOneTimeTokenException("El token no corresponde al usuario");
         }
 
-        // Validar la nueva contraseña
         if (newPassword == null || newPassword.length() < 8) {
             throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
         }
 
-        // Buscar el usuario asociado al token
         UserDocument user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        // Actualizar la contraseña del usuario
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        // Eliminar el token usado
+        String subject = "Contraseña actualizada";
+        String body = "Tu contraseña fue actualizada exitosamente el " + LocalDateTime.now();
+
+        sendNotification(CHANNEL_EMAIL, user.getEmail(), subject, body);
+        sendNotification(CHANNEL_SMS, user.getMobileNumber(), subject, body);
+
         tokenRepository.delete(resetToken);
     }
 
@@ -254,12 +279,10 @@ public class UserServiceImpl implements UserService {
         if ((firstName == null || firstName.isBlank()) && lastName != null && !lastName.isBlank()) {
             return userRepository.findByLastNameContainingIgnoreCase(lastName, pageable);
         }
-        // Ambos filtros presentes
         return userRepository.findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(firstName, lastName, pageable);
     }
 
     private UserDocument mapUserDocument(UserRegistrationRequest registrationRequest) {
-        // Crear nuevo usuario usando Lombok
         UserDocument user = new UserDocument();
         user.setUsername(registrationRequest.getUsername());
         user.setEmail(registrationRequest.getEmail());
