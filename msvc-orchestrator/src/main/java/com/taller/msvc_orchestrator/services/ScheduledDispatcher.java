@@ -1,9 +1,10 @@
-package com.taller.msvc_delivery.services.impl;
+package com.taller.msvc_orchestrator.services;
 
-import com.taller.msvc_delivery.DTO.NotificationDTO;
-import com.taller.msvc_delivery.entities.NotificationDocument;
-import com.taller.msvc_delivery.entities.NotificationStatus;
-import com.taller.msvc_delivery.repositories.NotificationRepository;
+
+import com.taller.msvc_orchestrator.DTO.NotificationDTO;
+import com.taller.msvc_orchestrator.entities.NotificationDocument;
+import com.taller.msvc_orchestrator.entities.NotificationStatus;
+import com.taller.msvc_orchestrator.repositories.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;

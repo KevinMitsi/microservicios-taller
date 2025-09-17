@@ -1,8 +1,8 @@
-package com.taller.msvc_delivery.services;
+package com.taller.msvc_orchestrator.services;
 
-import com.taller.msvc_delivery.DTO.NotificationCreateRequest;
-import com.taller.msvc_delivery.DTO.NotificationSearchCriteria;
-import com.taller.msvc_delivery.entities.NotificationDocument;
+import com.taller.msvc_orchestrator.DTO.NotificationCreateRequest;
+import com.taller.msvc_orchestrator.DTO.NotificationSearchCriteria;
+import com.taller.msvc_orchestrator.entities.NotificationDocument;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 

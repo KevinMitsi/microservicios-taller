@@ -1,8 +1,8 @@
-package com.taller.msvc_delivery.services.impl;
+package com.taller.msvc_orchestrator.services.impl;
 
-import com.taller.msvc_delivery.entities.TemplateEntity;
-import com.taller.msvc_delivery.repositories.TemplateRepository;
-import com.taller.msvc_delivery.services.TemplateService;
+import com.taller.msvc_orchestrator.entities.TemplateEntity;
+import com.taller.msvc_orchestrator.repositories.TemplateRepository;
+import com.taller.msvc_orchestrator.services.TemplateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

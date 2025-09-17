@@ -1,4 +1,4 @@
-package com.taller.msvc_delivery.entities;
+package com.taller.msvc_orchestrator.entities;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

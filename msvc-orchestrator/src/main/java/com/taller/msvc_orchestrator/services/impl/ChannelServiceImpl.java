@@ -1,8 +1,8 @@
-package com.taller.msvc_delivery.services.impl;
+package com.taller.msvc_orchestrator.services.impl;
 
-import com.taller.msvc_delivery.entities.ChannelEntity;
-import com.taller.msvc_delivery.repositories.ChannelRepository;
-import com.taller.msvc_delivery.services.ChannelService;
+import com.taller.msvc_orchestrator.entities.ChannelEntity;
+import com.taller.msvc_orchestrator.repositories.ChannelRepository;
+import com.taller.msvc_orchestrator.services.ChannelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

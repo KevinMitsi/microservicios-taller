@@ -1,6 +1,6 @@
-package com.taller.msvc_delivery.services;
+package com.taller.msvc_orchestrator.services;
 
-import com.taller.msvc_delivery.entities.TemplateEntity;
+import com.taller.msvc_orchestrator.entities.TemplateEntity;
 
 import java.util.Map;
 

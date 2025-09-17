@@ -1,6 +1,6 @@
-package com.taller.msvc_delivery.entities;
+package com.taller.msvc_orchestrator.entities;
 
-import com.taller.msvc_delivery.DTO.NotificationDTO;
+import com.taller.msvc_orchestrator.DTO.NotificationDTO;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
