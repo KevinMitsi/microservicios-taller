@@ -1,6 +1,6 @@
-package com.taller.msvc_delivery.repositories;
+package com.taller.msvc_orchestrator.repositories;
 
-import com.taller.msvc_delivery.entities.ChannelEntity;
+import com.taller.msvc_orchestrator.entities.ChannelEntity;
 import org.springframework.data.mongodb.repository.MongoRepository;
 
 import java.util.List;

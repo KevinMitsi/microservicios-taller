@@ -1,6 +1,6 @@
-package com.taller.msvc_delivery.services;
+package com.taller.msvc_orchestrator.services;
 
-import com.taller.msvc_delivery.entities.ChannelEntity;
+import com.taller.msvc_orchestrator.entities.ChannelEntity;
 
 import java.util.List;
 import java.util.Optional;

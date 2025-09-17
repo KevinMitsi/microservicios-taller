@@ -1,11 +1,11 @@
-package com.taller.msvc_delivery.controllers;
+package com.taller.msvc_orchestrator.controllers;
 
-import com.taller.msvc_delivery.DTO.NotificationCreateRequest;
-import com.taller.msvc_delivery.DTO.NotificationSearchCriteria;
-import com.taller.msvc_delivery.entities.ChannelEntity;
-import com.taller.msvc_delivery.entities.NotificationDocument;
-import com.taller.msvc_delivery.services.ChannelService;
-import com.taller.msvc_delivery.services.NotificationService;
+import com.taller.msvc_orchestrator.DTO.NotificationCreateRequest;
+import com.taller.msvc_orchestrator.DTO.NotificationSearchCriteria;
+import com.taller.msvc_orchestrator.entities.ChannelEntity;
+import com.taller.msvc_orchestrator.entities.NotificationDocument;
+import com.taller.msvc_orchestrator.services.ChannelService;
+import com.taller.msvc_orchestrator.services.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
