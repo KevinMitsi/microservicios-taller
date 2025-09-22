@@ -4,9 +4,11 @@ import com.taller.msvc_orchestrator.DTO.NotificationCreateRequest;
 import com.taller.msvc_orchestrator.DTO.NotificationSearchCriteria;
 import com.taller.msvc_orchestrator.entities.ChannelEntity;
 import com.taller.msvc_orchestrator.entities.NotificationDocument;
+import com.taller.msvc_orchestrator.entities.TemplateEntity;
 import com.taller.msvc_orchestrator.entities.NotificationStatus;
 import com.taller.msvc_orchestrator.services.ChannelService;
 import com.taller.msvc_orchestrator.services.NotificationService;
+import com.taller.msvc_orchestrator.services.TemplateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,6 +29,7 @@ public class NotificationController {
 
     private final NotificationService notificationService;
     private final ChannelService channelService;
+    private final TemplateService templateService;
 
     @GetMapping("/channels")
     public List<ChannelEntity> getChannels() { return channelService.getAvailableChannels(); }
@@ -40,6 +43,10 @@ public class NotificationController {
             saved = notificationService.createAndSend(req);
         }
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+    @GetMapping("/templates")
+    public List<TemplateEntity> getTemplates() {
+        return templateService.getAvailableTemplates();
     }
 
     @GetMapping
