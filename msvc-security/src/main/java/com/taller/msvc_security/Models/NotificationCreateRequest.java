@@ -1,19 +1,21 @@
 package com.taller.msvc_security.Models;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
+import java.time.Instant;
 import java.util.Map;
 
 @Data
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class NotificationCreateRequest {
-    private String templateType;
     private String channel;
     private String destination;
     private String subject;
     private String body;
-    private Map<String,Object> data;
+    private String templateType;
+    private Map<String, Object> data;
+    private Instant sendAt;
 }
