@@ -26,9 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +35,7 @@ public class UserServiceImpl implements UserService {
 
     public static final String CHANNEL_EMAIL = "email";
     public static final String CHANNEL_SMS = "sms";
+    public static final String USERNAME = "username";
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
@@ -48,24 +47,25 @@ public class UserServiceImpl implements UserService {
     @Value("${jwt.expiration-minutes:60}")
     private Integer jwtExpirationMinutes;
 
-
-    private void sendNotification(String channel, String destination, String subject, String body) {
+    /**
+     * Método helper para enviar notificaciones usando templates
+     */
+    private void sendNotificationWithTemplate(String templateType, String channel, String destination, Map<String, Object> data) {
         if (destination == null || destination.isBlank()) {
-            log.warn("No se envía notificación por {}: destination vacía", channel);
+            log.warn("No se envía notificación por {}: destino vacío", channel);
             return;
         }
-
         try {
             NotificationCreateRequest notif = new NotificationCreateRequest();
+            notif.setTemplateType(templateType);
             notif.setChannel(channel);
             notif.setDestination(destination);
-            notif.setSubject(subject);
-            notif.setBody(body);
+            notif.setData(data);
             httpOrchestratorClient.createAndSend(notif);
-            log.info("Notificación solicitada: canal={}, destino={}", channel, destination);
+            log.info("Notificación solicitada: type={}, canal={}, destino={}", templateType, channel, destination);
         } catch (Exception e) {
-            log.error("Error al solicitar envío de notificación (canal={}, destino={}): {}",
-                    channel, destination, e.getMessage());
+            log.error("Error al solicitar envío de notificación (type={}, canal={}, destino={}): {}",
+                    templateType, channel, destination, e.getMessage());
         }
     }
 
@@ -79,7 +79,6 @@ public class UserServiceImpl implements UserService {
         if (existsByUsername(registrationRequest.getUsername())) {
             throw new UserAlreadyExistException("El nombre de usuario ya está en uso");
         }
-
         if (existsByEmail(registrationRequest.getEmail())) {
             throw new UserAlreadyExistException("El correo electrónico ya está registrado");
         }
@@ -87,52 +86,16 @@ public class UserServiceImpl implements UserService {
         UserDocument user = mapUserDocument(registrationRequest);
         UserDocument saved = userRepository.save(user);
 
-        // Preparar mensaje
-        String subject = "Bienvenido a la plataforma";
-        String body = "Hola " + (saved.getFirstName() != null ? saved.getFirstName() : saved.getUsername())
-                + ", tu usuario fue registrado con éxito.";
+        // enviar notificaciones (email + sms)
+        Map<String, Object> data = new HashMap<>();
+        data.put(USERNAME, saved.getUsername());
+        data.put("firstName", saved.getFirstName());
+        data.put("lastName", saved.getLastName());
 
-        // Enviar email y sms (si existe número)
-        sendNotification(CHANNEL_EMAIL, saved.getEmail(), subject, body);
-        sendNotification(CHANNEL_SMS, saved.getMobileNumber(), subject, body);
+        sendNotificationWithTemplate("new-user", CHANNEL_EMAIL, saved.getEmail(), data);
+        sendNotificationWithTemplate("new-user", CHANNEL_SMS, saved.getMobileNumber(), data);
 
         return saved;
-    }
-
-    @Override
-    @Transactional
-    public UserDocument updateUser(String id, UserUpdateRequest updateRequest) {
-        UserDocument user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
-
-        if (updateRequest.getEmail() != null &&
-                !updateRequest.getEmail().equals(user.getEmail()) &&
-                existsByEmail(updateRequest.getEmail())) {
-            throw new UserAlreadyExistException("El correo electrónico ya está en uso por otro usuario");
-        }
-
-        if (updateRequest.getFirstName() != null) {
-            user.setFirstName(updateRequest.getFirstName());
-        }
-
-        if (updateRequest.getLastName() != null) {
-            user.setLastName(updateRequest.getLastName());
-        }
-
-        if (updateRequest.getEmail() != null) {
-            user.setEmail(updateRequest.getEmail());
-        }
-
-        return userRepository.save(user);
-    }
-
-    @Override
-    @Transactional
-    public void deleteUser(String id) {
-        if (userRepository.existsById(id)) {
-            tokenRepository.deleteByUserId(id);
-            userRepository.deleteById(id);
-        }
     }
 
     @Override
@@ -144,7 +107,6 @@ public class UserServiceImpl implements UserService {
                             loginRequest.getPassword()
                     )
             );
-
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
             UserDocument user = userRepository.findByUsername(loginRequest.getUsername())
@@ -155,14 +117,16 @@ public class UserServiceImpl implements UserService {
             AuthResponse authResponse = new AuthResponse();
             authResponse.setToken(jwt);
             authResponse.setTokenType("Bearer");
-            authResponse.setExpiresIn(jwtExpirationMinutes * 60); // minutos → segundos
+            authResponse.setExpiresIn(jwtExpirationMinutes * 60);
             authResponse.setUser(user);
 
-            // Notificar login exitoso (email + sms si aplica)
-            String subject = "Inicio de sesión exitoso";
-            String body = "Has iniciado sesión en el sistema en " + LocalDateTime.now();
-            sendNotification(CHANNEL_EMAIL, user.getEmail(), subject, body);
-            sendNotification(CHANNEL_SMS, user.getMobileNumber(), subject, body);
+            // notificación de login exitoso
+            Map<String, Object> data = new HashMap<>();
+            data.put(USERNAME, user.getUsername());
+            data.put("time", LocalDateTime.now());
+
+            sendNotificationWithTemplate("login", CHANNEL_EMAIL, user.getEmail(), data);
+            sendNotificationWithTemplate("login", CHANNEL_SMS, user.getMobileNumber(), data);
 
             return authResponse;
         } catch (Exception e) {
@@ -182,15 +146,84 @@ public class UserServiceImpl implements UserService {
         }
 
         String tokenStr = UUID.randomUUID().toString();
-        LocalDateTime expiryDate = LocalDateTime.now().plusHours(1);
+        LocalDateTime expiryDate = now.plusHours(1);
         PasswordResetToken resetToken = new PasswordResetToken(null, tokenStr, user.getId(), expiryDate);
         tokenRepository.save(resetToken);
 
-        String subject = "Recuperación de contraseña";
-        String body = "Usa este token para recuperar tu clave: " + tokenStr;
+        // notificación de recuperación de clave
+        Map<String, Object> data = new HashMap<>();
+        data.put(USERNAME, user.getUsername());
+        data.put("token", tokenStr);
+        data.put("expiry", expiryDate.toString());
 
-        sendNotification(CHANNEL_EMAIL, user.getEmail(), subject, body);
-        sendNotification(CHANNEL_SMS, user.getMobileNumber(), subject, body);
+        sendNotificationWithTemplate("password-recovery", CHANNEL_EMAIL, user.getEmail(), data);
+        sendNotificationWithTemplate("password-recovery", CHANNEL_SMS, user.getMobileNumber(), data);
+    }
+
+    @Override
+    @Transactional
+    public void resetPasswordForUser(String userId, String token, String newPassword) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(token)
+                .orElseThrow(() -> new RuntimeException("Token inválido"));
+
+        if (resetToken.isExpired()) {
+            tokenRepository.delete(resetToken);
+            throw new InvalidOneTimeTokenException("El token ha expirado");
+        }
+        if (!resetToken.getUserId().equals(userId)) {
+            throw new InvalidOneTimeTokenException("El token no corresponde al usuario");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
+        }
+
+        UserDocument user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        tokenRepository.delete(resetToken);
+
+        // notificación de actualización de clave
+        Map<String, Object> data = new HashMap<>();
+        data.put(USERNAME, user.getUsername());
+        data.put("time", LocalDateTime.now());
+
+        sendNotificationWithTemplate("password-update", CHANNEL_EMAIL, user.getEmail(), data);
+        sendNotificationWithTemplate("password-update", CHANNEL_SMS, user.getMobileNumber(), data);
+    }
+
+    // -------------------------
+    // CRUD y utilitarios
+    // -------------------------
+
+    @Override
+    @Transactional
+    public UserDocument updateUser(String id, UserUpdateRequest updateRequest) {
+        UserDocument user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
+
+        if (updateRequest.getEmail() != null &&
+                !updateRequest.getEmail().equals(user.getEmail()) &&
+                existsByEmail(updateRequest.getEmail())) {
+            throw new UserAlreadyExistException("El correo electrónico ya está en uso por otro usuario");
+        }
+
+        if (updateRequest.getFirstName() != null) user.setFirstName(updateRequest.getFirstName());
+        if (updateRequest.getLastName() != null) user.setLastName(updateRequest.getLastName());
+        if (updateRequest.getEmail() != null) user.setEmail(updateRequest.getEmail());
+
+        return userRepository.save(user);
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(String id) {
+        if (userRepository.existsById(id)) {
+            tokenRepository.deleteByUserId(id);
+            userRepository.deleteById(id);
+        }
     }
 
     @Override
@@ -229,43 +262,8 @@ public class UserServiceImpl implements UserService {
     public UserDocument updateUserRoles(String id, Set<Role> roles) {
         UserDocument user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado con ID: " + id));
-
         user.setAuthorities(roles);
         return userRepository.save(user);
-    }
-
-    @Override
-    @Transactional
-    public void resetPasswordForUser(String userId, String token, String newPassword) {
-        PasswordResetToken resetToken = tokenRepository.findByToken(token)
-                .orElseThrow(() -> new RuntimeException("Token inválido"));
-
-        if (resetToken.isExpired()) {
-            tokenRepository.delete(resetToken);
-            throw new InvalidOneTimeTokenException("El token ha expirado");
-        }
-
-        if (!resetToken.getUserId().equals(userId)) {
-            throw new InvalidOneTimeTokenException("El token no corresponde al usuario");
-        }
-
-        if (newPassword == null || newPassword.length() < 8) {
-            throw new IllegalArgumentException("La nueva contraseña debe tener al menos 8 caracteres");
-        }
-
-        UserDocument user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
-
-        user.setPassword(passwordEncoder.encode(newPassword));
-        userRepository.save(user);
-
-        String subject = "Contraseña actualizada";
-        String body = "Tu contraseña fue actualizada exitosamente el " + LocalDateTime.now();
-
-        sendNotification(CHANNEL_EMAIL, user.getEmail(), subject, body);
-        sendNotification(CHANNEL_SMS, user.getMobileNumber(), subject, body);
-
-        tokenRepository.delete(resetToken);
     }
 
     @Override
@@ -290,7 +288,6 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(registrationRequest.getPassword()));
         user.setFirstName(registrationRequest.getFirstName());
         user.setLastName(registrationRequest.getLastName());
-
         user.addRole(Role.USER);
         return user;
     }
@@ -304,5 +301,4 @@ public class UserServiceImpl implements UserService {
     public Optional<UserDocument> getUserById(String id) {
         return userRepository.findById(id);
     }
-
 }

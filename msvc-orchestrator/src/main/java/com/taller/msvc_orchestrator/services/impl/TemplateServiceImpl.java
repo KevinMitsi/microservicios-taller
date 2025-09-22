@@ -16,8 +16,8 @@ public class TemplateServiceImpl implements TemplateService {
     private final TemplateRepository templateRepository;
 
     @Override
-    public TemplateEntity getTemplate(String id) {
-        return templateRepository.findById(id)
+    public TemplateEntity getByTypeAndChannel(String type, String channel) {
+        return templateRepository.findByTypeAndChannel(type, channel)
                 .orElseThrow(() -> new NoSuchElementException("Template no existe"));
     }
 
