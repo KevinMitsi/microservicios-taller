@@ -8,7 +8,7 @@ import com.taller.msvc_security.Repository.PasswordResetTokenRepository;
 import com.taller.msvc_security.Repository.UserRepository;
 import com.taller.msvc_security.exception.InvalidCredentialsException;
 import com.taller.msvc_security.exception.UserAlreadyExistException;
-import com.taller.msvc_security.http.HttpOrchestratorClient;
+import com.taller.msvc_security.Services.NotificationService;
 import com.taller.msvc_security.utils.JwtUtils;
 import com.taller.msvc_security.Services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
+@Slf4j  //logger
 public class UserServiceImpl implements UserService {
 
     public static final String CHANNEL_EMAIL = "email";
@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final HttpOrchestratorClient httpOrchestratorClient;
+    private final NotificationService notificationService;
     private final JwtUtils jwtUtils;
 
     @Value("${jwt.expiration-minutes:60}")
@@ -55,18 +55,14 @@ public class UserServiceImpl implements UserService {
             log.warn("No se envía notificación por {}: destino vacío", channel);
             return;
         }
-        try {
-            NotificationCreateRequest notif = new NotificationCreateRequest();
-            notif.setTemplateType(templateType);
-            notif.setChannel(channel);
-            notif.setDestination(destination);
-            notif.setData(data);
-            httpOrchestratorClient.createAndSend(notif);
-            log.info("Notificación solicitada: type={}, canal={}, destino={}", templateType, channel, destination);
-        } catch (Exception e) {
-            log.error("Error al solicitar envío de notificación (type={}, canal={}, destino={}): {}",
-                    templateType, channel, destination, e.getMessage());
-        }
+
+        NotificationCreateRequest notif = new NotificationCreateRequest();
+        notif.setTemplateType(templateType);
+        notif.setChannel(channel);
+        notif.setDestination(destination);
+        notif.setData(data);
+
+        notificationService.sendNotification(notif);
     }
 
     // -------------------------

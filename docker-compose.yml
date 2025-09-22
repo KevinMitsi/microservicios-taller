@@ -44,8 +44,13 @@ services:
         MONGO_USERNAME: admin
         MONGO_PASSWORD: secret
         MONGO_DATABASE: bd_users
+        RABBITMQ_HOST: rabbitmq
+        RABBITMQ_PORT: 5672
+        RABBITMQ_USER: admin
+        RABBITMQ_PASS: admin
     depends_on:
       - mongo-security
+      - rabbitmq
 
 #  msvc-saludo:
 #    image: kevinmitsi/msvc-saludo:latest
