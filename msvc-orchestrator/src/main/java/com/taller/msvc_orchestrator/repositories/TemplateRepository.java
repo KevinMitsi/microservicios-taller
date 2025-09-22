@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface TemplateRepository extends MongoRepository<TemplateEntity, String> {
     List<TemplateEntity> findByChannelAndActiveTrue(String channel);
     Optional<TemplateEntity> findByTypeAndChannel(String type, String channel);
+    List<TemplateEntity> findAllByActiveTrue();
 
 }

@@ -6,6 +6,7 @@ import com.taller.msvc_orchestrator.services.TemplateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Objects;
@@ -30,5 +31,10 @@ public class TemplateServiceImpl implements TemplateService {
             }
         }
         return result;
+    }
+
+    @Override
+    public List<TemplateEntity> getAvailableTemplates() {
+        return templateRepository.findAllByActiveTrue();
     }
 }

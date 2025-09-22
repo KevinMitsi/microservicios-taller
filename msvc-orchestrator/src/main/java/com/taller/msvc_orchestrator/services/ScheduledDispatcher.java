@@ -22,7 +22,7 @@ public class ScheduledDispatcher {
     private final NotificationRepository repo;
     private final RabbitTemplate rabbitTemplate;
 
-    @Scheduled(fixedDelayString = "${notifications.scheduler.poll-ms:60000}")
+    @Scheduled(fixedDelayString = "${notifications.scheduler.poll-ms:30000}")
     public void publishDue() {
         Instant now = Instant.now();
         List<NotificationDocument> due = repo.findByStatusAndScheduledAtBefore(NotificationStatus.SCHEDULED, now);

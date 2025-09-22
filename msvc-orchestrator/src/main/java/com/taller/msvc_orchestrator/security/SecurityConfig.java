@@ -1,4 +1,4 @@
-package com.taller.msvc_delivery.security;
+package com.taller.msvc_orchestrator.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +27,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/notifications/channels").permitAll()
                         .requestMatchers("/api/notifications/**").authenticated()
+                        .requestMatchers("api/notifications").authenticated()
                         .anyRequest().denyAll()
                 );
 
