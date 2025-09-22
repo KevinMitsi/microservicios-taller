@@ -10,11 +10,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitConfig {
 
-    public static final String NOTIFICATIONS_EXCHANGE = "exchange.notifications";
+    public static final String USER_EVENTS_EXCHANGE = "exchange.user-events";
 
     @Bean
-    public TopicExchange notificationsExchange() {
-        return new TopicExchange(NOTIFICATIONS_EXCHANGE);
+    public TopicExchange userEventsExchange() {
+        return new TopicExchange(USER_EVENTS_EXCHANGE);
     }
 
     @Bean

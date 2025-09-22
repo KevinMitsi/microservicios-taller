@@ -8,7 +8,7 @@ import com.taller.msvc_security.Repository.PasswordResetTokenRepository;
 import com.taller.msvc_security.Repository.UserRepository;
 import com.taller.msvc_security.exception.InvalidCredentialsException;
 import com.taller.msvc_security.exception.UserAlreadyExistException;
-import com.taller.msvc_security.Services.NotificationService;
+import com.taller.msvc_security.Services.UserEventService;
 import com.taller.msvc_security.utils.JwtUtils;
 import com.taller.msvc_security.Services.UserService;
 import lombok.RequiredArgsConstructor;
@@ -30,39 +30,35 @@ import java.util.*;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j  //logger
+@Slf4j
 public class UserServiceImpl implements UserService {
 
-    public static final String CHANNEL_EMAIL = "email";
-    public static final String CHANNEL_SMS = "sms";
     public static final String USERNAME = "username";
 
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-    private final NotificationService notificationService;
+    private final UserEventService userEventService;
     private final JwtUtils jwtUtils;
 
     @Value("${jwt.expiration-minutes:60}")
     private Integer jwtExpirationMinutes;
 
     /**
-     * Método helper para enviar notificaciones usando templates
+     * Método helper para publicar eventos de usuario
      */
-    private void sendNotificationWithTemplate(String templateType, String channel, String destination, Map<String, Object> data) {
-        if (destination == null || destination.isBlank()) {
-            log.warn("No se envía notificación por {}: destino vacío", channel);
-            return;
-        }
+    private void publishUserEvent(String eventType, UserDocument user, Map<String, Object> additionalData) {
+        UserEvent event = new UserEvent();
+        event.setEventType(eventType);
+        event.setUserId(user.getId());
+        event.setUsername(user.getUsername());
+        event.setEmail(user.getEmail());
+        event.setMobileNumber(user.getMobileNumber());
+        event.setTimestamp(LocalDateTime.now());
+        event.setAdditionalData(additionalData != null ? additionalData : new HashMap<>());
 
-        NotificationCreateRequest notif = new NotificationCreateRequest();
-        notif.setTemplateType(templateType);
-        notif.setChannel(channel);
-        notif.setDestination(destination);
-        notif.setData(data);
-
-        notificationService.sendNotification(notif);
+        userEventService.publishEvent(event);
     }
 
     // -------------------------
@@ -82,14 +78,12 @@ public class UserServiceImpl implements UserService {
         UserDocument user = mapUserDocument(registrationRequest);
         UserDocument saved = userRepository.save(user);
 
-        // enviar notificaciones (email + sms)
+        // Publicar evento de nuevo usuario
         Map<String, Object> data = new HashMap<>();
-        data.put(USERNAME, saved.getUsername());
         data.put("firstName", saved.getFirstName());
         data.put("lastName", saved.getLastName());
 
-        sendNotificationWithTemplate("new-user", CHANNEL_EMAIL, saved.getEmail(), data);
-        sendNotificationWithTemplate("new-user", CHANNEL_SMS, saved.getMobileNumber(), data);
+        publishUserEvent("new-user", saved, data);
 
         return saved;
     }
@@ -116,13 +110,11 @@ public class UserServiceImpl implements UserService {
             authResponse.setExpiresIn(jwtExpirationMinutes * 60);
             authResponse.setUser(user);
 
-            // notificación de login exitoso
+            // Publicar evento de login exitoso
             Map<String, Object> data = new HashMap<>();
-            data.put(USERNAME, user.getUsername());
-            data.put("time", LocalDateTime.now());
+            data.put("loginTime", LocalDateTime.now());
 
-            sendNotificationWithTemplate("login", CHANNEL_EMAIL, user.getEmail(), data);
-            sendNotificationWithTemplate("login", CHANNEL_SMS, user.getMobileNumber(), data);
+            publishUserEvent("login", user, data);
 
             return authResponse;
         } catch (Exception e) {
@@ -146,14 +138,12 @@ public class UserServiceImpl implements UserService {
         PasswordResetToken resetToken = new PasswordResetToken(null, tokenStr, user.getId(), expiryDate);
         tokenRepository.save(resetToken);
 
-        // notificación de recuperación de clave
+        // Publicar evento de recuperación de contraseña
         Map<String, Object> data = new HashMap<>();
-        data.put(USERNAME, user.getUsername());
         data.put("token", tokenStr);
-        data.put("expiry", expiryDate.toString());
+        data.put("expiry", expiryDate);
 
-        sendNotificationWithTemplate("password-recovery", CHANNEL_EMAIL, user.getEmail(), data);
-        sendNotificationWithTemplate("password-recovery", CHANNEL_SMS, user.getMobileNumber(), data);
+        publishUserEvent("password-recovery", user, data);
     }
 
     @Override
@@ -181,13 +171,11 @@ public class UserServiceImpl implements UserService {
 
         tokenRepository.delete(resetToken);
 
-        // notificación de actualización de clave
+        // Publicar evento de actualización de contraseña
         Map<String, Object> data = new HashMap<>();
-        data.put(USERNAME, user.getUsername());
-        data.put("time", LocalDateTime.now());
+        data.put("updateTime", LocalDateTime.now());
 
-        sendNotificationWithTemplate("password-update", CHANNEL_EMAIL, user.getEmail(), data);
-        sendNotificationWithTemplate("password-update", CHANNEL_SMS, user.getMobileNumber(), data);
+        publishUserEvent("password-update", user, data);
     }
 
     // -------------------------
