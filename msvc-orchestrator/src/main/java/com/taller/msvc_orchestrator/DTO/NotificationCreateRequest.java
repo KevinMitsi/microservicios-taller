@@ -14,7 +14,7 @@ import java.util.Map;
 @NoArgsConstructor
 public class NotificationCreateRequest {
 
-    private String templateId;
+    private String templateType;
 
     @NotBlank(message = "El canal es obligatorio")
     private String channel;

@@ -14,6 +14,7 @@ public class TemplateEntity {
     @Id
     private String id;
     private String name;
+    private String type;
     private String channel;
     private String subject;
     private String body;

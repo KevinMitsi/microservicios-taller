@@ -39,9 +39,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public NotificationDocument createAndSend(NotificationCreateRequest notiRequest) {
-
-        System.out.println(channelService.getChannel(notiRequest.getChannel()));
-        // 1) Obtener y validar canal (usa la entidad, no el valor "crudo" del request)
+        // 1) Obtener y validar canal
         ChannelEntity channel = channelService.getChannel(notiRequest.getChannel())
                 .orElseThrow(() -> new IllegalArgumentException("Canal no soportado: " + notiRequest.getChannel()));
 
@@ -49,18 +47,21 @@ public class NotificationServiceImpl implements NotificationService {
             throw new IllegalStateException("El canal '" + channel.getKey() + "' está deshabilitado.");
         }
 
-        // 2) Construir documento (body/subject se sobreescriben si hay template)
+        // 2) Construir documento base
         NotificationDocument notification = buildDocumentFromRequest(notiRequest);
-
-        // normalizar el canal con el key de la entidad
         notification.setChannel(channel.getKey());
 
-        if (notiRequest.getTemplateId() != null) {
-            TemplateEntity template = templateService.getTemplate(notiRequest.getTemplateId());
+        // 3) Renderizar template si se envió un tipo
+        if (notiRequest.getTemplateType() != null) {
+            TemplateEntity template = templateService.getByTypeAndChannel(
+                    notiRequest.getTemplateType(),
+                    channel.getKey()
+            );
+
             notification.setSubject(template.getSubject());
             notification.setBody(templateService.render(template.getBody(), notiRequest.getData()));
         } else {
-            // asegurar que si no se pasa body/subject en request, queden nulos o valores por defecto
+            // fallback si no hay templateType
             if (notification.getBody() == null) {
                 notification.setBody(notiRequest.getBody());
             }
@@ -72,11 +73,10 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setStatus(NotificationStatus.PENDING);
         notification.setCreatedAt(Instant.now());
 
-        // 3) Persistir para obtener ID antes de publicar
+        // 4) Persistir
         NotificationDocument saved = notificationRepository.save(notification);
 
-
-        // 4) Construir DTO con notificationId y publicar usando el key normalizado del ChannelEntity
+        // 5) Publicar
         NotificationDTO dto = saved.toDto();
         try {
             rabbitTemplate.convertAndSend(NOTIFICATIONS_SENDING_METHOD, channel.getKey(), dto);
@@ -85,27 +85,24 @@ public class NotificationServiceImpl implements NotificationService {
         } catch (Exception e) {
             saved.setStatus(NotificationStatus.FAILED);
         }
+
         return notificationRepository.save(saved);
     }
-
 
     @Override
     public NotificationDocument schedule(NotificationCreateRequest req, Instant sendAt) {
         NotificationDocument doc = buildDocumentFromRequest(req);
-        // render similar al anterior
         doc.setScheduledAt(sendAt);
         doc.setStatus(NotificationStatus.SCHEDULED);
         doc.setCreatedAt(Instant.now());
         return notificationRepository.save(doc);
     }
 
-    // búsqueda con filtros: construye un Example o Query dinámico
     @Override
     public Page<NotificationDocument> search(NotificationSearchCriteria criteria, Pageable pageable) {
-        // Ejemplo simple usando ExampleMatcher (puede mejorarse con QueryDSL)
         NotificationDocument probe = new NotificationDocument();
-        if (criteria.getChannel()!=null) probe.setChannel(criteria.getChannel());
-        if (criteria.getStatus()!=null) probe.setStatus(criteria.getStatus());
+        if (criteria.getChannel() != null) probe.setChannel(criteria.getChannel());
+        if (criteria.getStatus() != null) probe.setStatus(criteria.getStatus());
         ExampleMatcher matcher = ExampleMatcher.matchingAll().withIgnoreNullValues();
         Example<NotificationDocument> ex = Example.of(probe, matcher);
         return notificationRepository.findAll(ex, pageable);
@@ -119,7 +116,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void cancel(String id) {
         notificationRepository.findById(id).ifPresent(n -> {
-            if (n.getStatus()==NotificationStatus.SCHEDULED || n.getStatus()==NotificationStatus.PENDING) {
+            if (n.getStatus() == NotificationStatus.SCHEDULED || n.getStatus() == NotificationStatus.PENDING) {
                 n.setStatus(NotificationStatus.CANCELLED);
                 notificationRepository.save(n);
             } else {
@@ -137,7 +134,4 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setBody(request.getBody());
         return notification;
     }
-
-
-
 }
