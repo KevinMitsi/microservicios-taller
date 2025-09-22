@@ -1,9 +1,8 @@
 package com.taller.msvc_orchestrator.services.impl;
 
 import com.taller.msvc_orchestrator.DTO.NotificationCreateRequest;
-
-import com.taller.msvc_orchestrator.DTO.NotificationDTO;
 import com.taller.msvc_orchestrator.DTO.NotificationSearchCriteria;
+import com.taller.msvc_orchestrator.DTO.NotificationDTO;
 import com.taller.msvc_orchestrator.entities.ChannelEntity;
 import com.taller.msvc_orchestrator.entities.NotificationDocument;
 import com.taller.msvc_orchestrator.entities.NotificationStatus;
@@ -19,12 +18,15 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 
 @Service
@@ -100,12 +102,78 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public Page<NotificationDocument> search(NotificationSearchCriteria criteria, Pageable pageable) {
+        // Crear un documento de ejemplo para filtrado
         NotificationDocument probe = new NotificationDocument();
-        if (criteria.getChannel() != null) probe.setChannel(criteria.getChannel());
-        if (criteria.getStatus() != null) probe.setStatus(criteria.getStatus());
-        ExampleMatcher matcher = ExampleMatcher.matchingAll().withIgnoreNullValues();
-        Example<NotificationDocument> ex = Example.of(probe, matcher);
-        return notificationRepository.findAll(ex, pageable);
+
+        // Aplicar filtros específicos
+        if (criteria.getChannel() != null && !criteria.getChannel().trim().isEmpty()) {
+            probe.setChannel(criteria.getChannel());
+        }
+        if (criteria.getDestination() != null && !criteria.getDestination().trim().isEmpty()) {
+            probe.setDestination(criteria.getDestination());
+        }
+        if (criteria.getStatus() != null) {
+            probe.setStatus(criteria.getStatus());
+        }
+
+        // Configurar el matcher para búsqueda flexible
+        ExampleMatcher matcher = ExampleMatcher.matchingAll()
+                .withIgnoreNullValues()
+                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING)
+                .withIgnoreCase();
+
+        Example<NotificationDocument> example = Example.of(probe, matcher);
+
+        // Si hay filtro de mensaje, necesitamos hacer una búsqueda más compleja
+        if (criteria.getMessage() != null && !criteria.getMessage().trim().isEmpty()) {
+            // Para el filtro de mensaje, haremos una búsqueda manual ya que Spring Data Example
+            // no puede buscar en múltiples campos con OR
+            return searchWithMessageFilter(criteria, pageable);
+        }
+
+        return notificationRepository.findAll(example, pageable);
+    }
+
+    private Page<NotificationDocument> searchWithMessageFilter(NotificationSearchCriteria criteria, Pageable pageable) {
+        // Obtener todos los documentos sin el filtro de mensaje
+        NotificationDocument probe = new NotificationDocument();
+        if (criteria.getChannel() != null && !criteria.getChannel().trim().isEmpty()) {
+            probe.setChannel(criteria.getChannel());
+        }
+        if (criteria.getDestination() != null && !criteria.getDestination().trim().isEmpty()) {
+            probe.setDestination(criteria.getDestination());
+        }
+        if (criteria.getStatus() != null) {
+            probe.setStatus(criteria.getStatus());
+        }
+
+        ExampleMatcher matcher = ExampleMatcher.matchingAll()
+                .withIgnoreNullValues()
+                .withStringMatcher(ExampleMatcher.StringMatcher.CONTAINING)
+                .withIgnoreCase();
+
+        Example<NotificationDocument> example = Example.of(probe, matcher);
+
+        // Por simplicidad, obtenemos todos los resultados y filtramos en memoria
+        // Para un sistema de producción, sería mejor usar consultas MongoDB nativas
+        Page<NotificationDocument> allResults = notificationRepository.findAll(example, pageable);
+
+        String messageFilter = criteria.getMessage().toLowerCase();
+
+        // Filtrar los resultados por mensaje en subject o body
+        List<NotificationDocument> filteredContent = allResults.getContent().stream()
+                .filter(doc ->
+                    (doc.getSubject() != null && doc.getSubject().toLowerCase().contains(messageFilter)) ||
+                    (doc.getBody() != null && doc.getBody().toLowerCase().contains(messageFilter))
+                )
+                .collect(Collectors.toList());
+
+        // Crear una nueva página con los resultados filtrados
+        return new PageImpl<>(
+                filteredContent,
+                pageable,
+                filteredContent.size()
+        );
     }
 
     @Override
