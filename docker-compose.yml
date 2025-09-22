@@ -38,14 +38,14 @@ services:
     networks:
       - msvc-net
     environment:
-        MONGO_HOST: mongo
+        MONGO_HOST: mongo-security
         LB_ORCHESTRATOR_URL: http://msvc-orchestrator:8083
         MONGO_PORT: 27017
         MONGO_USERNAME: admin
         MONGO_PASSWORD: secret
         MONGO_DATABASE: bd_users
     depends_on:
-      - mongo
+      - mongo-security
 
 #  msvc-saludo:
 #    image: kevinmitsi/msvc-saludo:latest
@@ -65,7 +65,7 @@ services:
     depends_on:
       #- msvc-saludo
       - msvc-security
-      - mongo
+      - mongo-security
       - rabbitmq
     environment:
         RABBITMQ_HOST: rabbitmq
@@ -88,36 +88,52 @@ services:
     depends_on:
       #- msvc-saludo
       #- msvc-security
-      - mongo
+      - mongo-orchestrator
       - rabbitmq
     environment:
         RABBITMQ_HOST: rabbitmq
         RABBITMQ_PORT: 5672
         RABBITMQ_USER: admin
         RABBITMQ_PASS: admin
-        MONGO_HOST: mongo
+        MONGO_HOST: mongo-orchestrator
         MONGO_PORT: 27017
         MONGO_USERNAME: admin
         MONGO_PASSWORD: secret
-        MONGO_DATABASE: delivery_db
+        MONGO_DATABASE: orchestrator_db
 #        LB_SECURITY_URL: http://msvc-security:8080
 #        LB_SALUDO_URL: http://msvc-saludo:80
 
-  mongo:
+  # Base de datos MongoDB para msvc-security
+  mongo-security:
     image: mongo:6.0
-    container_name: mongo_db
+    container_name: mongo_security_db
     ports:
       - "27017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: secret
     volumes:
-      - mongo_data:/data/db
+      - mongo_security_data:/data/db
+    networks:
+      - msvc-net
+
+  # Base de datos MongoDB dedicada para msvc-orchestrator
+  mongo-orchestrator:
+    image: mongo:6.0
+    container_name: mongo_orchestrator_db
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: secret
+    volumes:
+      - mongo_orchestrator_data:/data/db
     networks:
       - msvc-net
 
 volumes:
-  mongo_data:
+  mongo_security_data:
+  mongo_orchestrator_data:
 
 networks:
   msvc-net:
