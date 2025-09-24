@@ -32,9 +32,6 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 public class UserServiceImpl implements UserService {
-
-    public static final String USERNAME = "username";
-
     private final UserRepository userRepository;
     private final PasswordResetTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -45,9 +42,7 @@ public class UserServiceImpl implements UserService {
     @Value("${jwt.expiration-minutes:60}")
     private Integer jwtExpirationMinutes;
 
-    /**
-     * Método helper para publicar eventos de usuario
-     */
+
     private void publishUserEvent(String eventType, UserDocument user, Map<String, Object> additionalData) {
         UserEvent event = new UserEvent();
         event.setEventType(eventType);

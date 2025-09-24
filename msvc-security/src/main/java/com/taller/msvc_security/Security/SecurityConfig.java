@@ -32,7 +32,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Rutas públicas
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/newUser").permitAll()
+                        .requestMatchers("/api/users").permitAll()
                         // Swagger (importante permitir todos los recursos)
                         // Swagger + OpenAPI
                         .requestMatchers(
