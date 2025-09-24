@@ -11,11 +11,13 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
-    public static final String EXCHANGE = "exchange.notifications";
+    public static final String NOTIFICATIONS_EXCHANGE = "exchange.notifications";
+    public static final String USER_EVENTS_EXCHANGE = "exchange.user-events";
 
+    // Configuración para notificaciones (ya existente)
     @Bean
     TopicExchange notificationExchange() {
-        return new TopicExchange(EXCHANGE);
+        return new TopicExchange(NOTIFICATIONS_EXCHANGE);
     }
 
     @Bean
@@ -36,6 +38,52 @@ public class RabbitMQConfig {
     @Bean
     Binding bindSms(Queue smsQueue, TopicExchange notificationExchange) {
         return BindingBuilder.bind(smsQueue).to(notificationExchange).with("sms");
+    }
+
+    // Nueva configuración para eventos de usuario
+    @Bean
+    TopicExchange userEventsExchange() {
+        return new TopicExchange(USER_EVENTS_EXCHANGE);
+    }
+
+    @Bean
+    Queue newUserQueue() {
+        return QueueBuilder.durable("queue.new-user").build();
+    }
+
+    @Bean
+    Binding bindNewUser(Queue newUserQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(newUserQueue).to(userEventsExchange).with("new-user");
+    }
+
+    @Bean
+    Queue loginQueue() {
+        return QueueBuilder.durable("queue.login").build();
+    }
+
+    @Bean
+    Binding bindLogin(Queue loginQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(loginQueue).to(userEventsExchange).with("login");
+    }
+
+    @Bean
+    Queue passwordRecoveryQueue() {
+        return QueueBuilder.durable("queue.password-recovery").build();
+    }
+
+    @Bean
+    Binding bindPasswordRecovery(Queue passwordRecoveryQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(passwordRecoveryQueue).to(userEventsExchange).with("password-recovery");
+    }
+
+    @Bean
+    Queue passwordUpdateQueue() {
+        return QueueBuilder.durable("queue.password-update").build();
+    }
+
+    @Bean
+    Binding bindPasswordUpdate(Queue passwordUpdateQueue, TopicExchange userEventsExchange) {
+        return BindingBuilder.bind(passwordUpdateQueue).to(userEventsExchange).with("password-update");
     }
 
     @Bean
