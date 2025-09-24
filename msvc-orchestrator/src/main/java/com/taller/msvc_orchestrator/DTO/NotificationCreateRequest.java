@@ -21,11 +21,8 @@ public class NotificationCreateRequest {
 
     @NotBlank(message = "El destino es obligatorio")
     private String destination;
-
-    @NotBlank(message = "El asunto es obligatorio")
     private String subject;
 
-    @NotBlank(message = "El cuerpo es obligatorio")
     private String body;
 
     private Map<String,Object> data;

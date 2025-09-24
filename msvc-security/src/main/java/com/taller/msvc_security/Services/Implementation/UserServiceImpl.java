@@ -47,27 +47,7 @@ public class UserServiceImpl implements UserService {
     @Value("${jwt.expiration-minutes:60}")
     private Integer jwtExpirationMinutes;
 
-    /**
-     * Método helper para enviar notificaciones usando templates
-     */
-    private void sendNotificationWithTemplate(String templateType, String channel, String destination, Map<String, Object> data) {
-        if (destination == null || destination.isBlank()) {
-            log.warn("No se envía notificación por {}: destino vacío", channel);
-            return;
-        }
-        try {
-            NotificationCreateRequest notif = new NotificationCreateRequest();
-            notif.setTemplateType(templateType);
-            notif.setChannel(channel);
-            notif.setDestination(destination);
-            notif.setData(data);
-            httpOrchestratorClient.createAndSend(notif);
-            log.info("Notificación solicitada: type={}, canal={}, destino={}", templateType, channel, destination);
-        } catch (Exception e) {
-            log.error("Error al solicitar envío de notificación (type={}, canal={}, destino={}): {}",
-                    templateType, channel, destination, e.getMessage());
-        }
-    }
+
 
     // -------------------------
     // REGLAS DE NEGOCIO
@@ -92,8 +72,10 @@ public class UserServiceImpl implements UserService {
         data.put("firstName", saved.getFirstName());
         data.put("lastName", saved.getLastName());
 
-        sendNotificationWithTemplate("new-user", CHANNEL_EMAIL, saved.getEmail(), data);
-        sendNotificationWithTemplate("new-user", CHANNEL_SMS, saved.getMobileNumber(), data);
+        String serviceToken = jwtUtils.generateToken(saved.getUsername(), Set.of(Role.SERVICE));
+
+        sendNotificationWithTemplate("new-user", CHANNEL_EMAIL, saved.getEmail(), data, serviceToken);
+        sendNotificationWithTemplate("new-user", CHANNEL_SMS, saved.getMobileNumber(), data, serviceToken);
 
         return saved;
     }
@@ -125,8 +107,8 @@ public class UserServiceImpl implements UserService {
             data.put(USERNAME, user.getUsername());
             data.put("time", LocalDateTime.now());
 
-            sendNotificationWithTemplate("login", CHANNEL_EMAIL, user.getEmail(), data);
-            sendNotificationWithTemplate("login", CHANNEL_SMS, user.getMobileNumber(), data);
+            sendNotificationWithTemplate("login", CHANNEL_EMAIL, user.getEmail(), data, jwt);
+            sendNotificationWithTemplate("login", CHANNEL_SMS, user.getMobileNumber(), data, jwt);
 
             return authResponse;
         } catch (Exception e) {
@@ -156,8 +138,11 @@ public class UserServiceImpl implements UserService {
         data.put("token", tokenStr);
         data.put("expiry", expiryDate.toString());
 
-        sendNotificationWithTemplate("password-recovery", CHANNEL_EMAIL, user.getEmail(), data);
-        sendNotificationWithTemplate("password-recovery", CHANNEL_SMS, user.getMobileNumber(), data);
+        String serviceToken = jwtUtils.generateToken("FILTRO DE SEGURIDAD", Set.of(Role.SERVICE));
+
+
+        sendNotificationWithTemplate("password-recovery", CHANNEL_EMAIL, user.getEmail(), data, serviceToken);
+        sendNotificationWithTemplate("password-recovery", CHANNEL_SMS, user.getMobileNumber(), data, serviceToken);
     }
 
     @Override
@@ -189,9 +174,10 @@ public class UserServiceImpl implements UserService {
         Map<String, Object> data = new HashMap<>();
         data.put(USERNAME, user.getUsername());
         data.put("time", LocalDateTime.now());
+        String serviceToken = jwtUtils.generateToken(user.getUsername(), Set.of(Role.SERVICE));
 
-        sendNotificationWithTemplate("password-update", CHANNEL_EMAIL, user.getEmail(), data);
-        sendNotificationWithTemplate("password-update", CHANNEL_SMS, user.getMobileNumber(), data);
+        sendNotificationWithTemplate("password-update", CHANNEL_EMAIL, user.getEmail(), data, serviceToken);
+        sendNotificationWithTemplate("password-update", CHANNEL_SMS, user.getMobileNumber(), data, serviceToken);
     }
 
     // -------------------------
@@ -301,4 +287,30 @@ public class UserServiceImpl implements UserService {
     public Optional<UserDocument> getUserById(String id) {
         return userRepository.findById(id);
     }
+
+
+    /**
+     * Method helper para enviar notificaciones usando templates
+     */
+    private void sendNotificationWithTemplate(String templateType, String channel, String destination,
+                                              Map<String, Object> data, String jwt) {
+        if (destination == null || destination.isBlank()) {
+            log.warn("No se envía notificación por {}: destino vacío", channel);
+            return;
+        }
+        try {
+            NotificationCreateRequest notif = new NotificationCreateRequest();
+            notif.setTemplateType(templateType);
+            notif.setChannel(channel);
+            notif.setDestination(destination);
+            notif.setData(data);
+
+            httpOrchestratorClient.createAndSend(notif, "Bearer " + jwt);
+            log.info("Notificación solicitada: type={}, canal={}, destino={}", templateType, channel, destination);
+        } catch (Exception e) {
+            log.error("Error al solicitar envío de notificación (type={}, canal={}, destino={}): {}",
+                    templateType, channel, destination, e.getMessage());
+        }
+    }
+
 }
