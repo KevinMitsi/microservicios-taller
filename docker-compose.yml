@@ -16,19 +16,19 @@ services:
     networks:
       - msvc-net
 
-#  msvc-consumer:
-#    image: kevinmitsi/msvc-consumer:latest
-#    container_name: msvc-consumer
-#    ports:
-#      - "8081:8081"
-#    networks:
-#      - msvc-net
-#    depends_on:
-#      - msvc-saludo
-#      - msvc-security
-#    environment:
-#        LB_SECURITY_URL: http://msvc-security:8080
-#        LB_SALUDO_URL: http://msvc-saludo:80
+  msvc-consumer:
+    image: kevinmitsi/msvc-consumer:latest
+    container_name: msvc-consumer
+    ports:
+      - "8081:8081"
+    networks:
+      - msvc-net
+    depends_on:
+      - msvc-saludo
+      - msvc-security
+    environment:
+        LB_SECURITY_URL: http://msvc-security:8080
+        LB_SALUDO_URL: http://msvc-saludo:80
 
   msvc-security:
     image: kevinmitsi/msvc-security:latest
@@ -52,13 +52,13 @@ services:
       - mongo-security
       - rabbitmq
 
-#  msvc-saludo:
-#    image: kevinmitsi/msvc-saludo:latest
-#    container_name: msvc-saludo
-#    ports:
-#      - "80:80"
-#    networks:
-#      - msvc-net
+  msvc-saludo:
+    image: kevinmitsi/msvc-saludo:latest
+    container_name: msvc-saludo
+    ports:
+      - "80:80"
+    networks:
+      - msvc-net
 
   msvc-delivery:
     image: kevinmitsi/msvc-delivery:latest
