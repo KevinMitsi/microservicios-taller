@@ -1,0 +1,20 @@
+spring:
+  # Desactivar MongoDB completamente para tests
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.mongo.MongoReactiveAutoConfiguration
+
+# Configuración JWT para tests (Base64 válido)
+jwt:
+  secret: dGVzdC1zZWNyZXQta2V5LWZvci10ZXN0aW5nLXB1cnBvc2VzLW9ubHktZG8tbm90LXVzZS1pbi1wcm9kdWN0aW9uLXRoaXMtaXMtYS1sb25nLWtleQ==
+  issuer: msvc-security-test
+  expiration-minutes: 60
+
+# Logging para debugging de tests
+logging:
+  level:
+    com.taller.msvc_security: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG

@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/webjars/**"
                         ).permitAll()
+                        .requestMatchers("/api/auth/tokens").permitAll()
                         .requestMatchers("/api/auth/password-recovery").permitAll()
                         .requestMatchers("/api/auth/password-reset").permitAll()
                         // Todas las demás rutas requieren autenticación
