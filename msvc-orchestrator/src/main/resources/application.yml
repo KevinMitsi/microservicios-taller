@@ -20,4 +20,15 @@ jwt:
   expiration-minutes: 60
   secret: ${JWT_SECRET:VGhpcy1pcy1qd3Qtc2VjcmV0LXNob3VsZC1iZS1iYXNlNjQtMzJieXRlcy0xMjM0NTY3ODkwMTIzNDU2}
 
-
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+app:
+  version: 1.0.0
