@@ -10,6 +10,7 @@ import com.taller.msvc_security.Models.UserUpdateRequest;
 import com.taller.msvc_security.Repository.UserRepository;
 import com.taller.msvc_security.Services.UserService;
 import com.taller.msvc_security.utils.JwtUtils;
+import com.taller.msvc_security.utils.TestDataGenerator;
 import io.cucumber.datatable.DataTable;
 import io.cucumber.java.Before;
 import io.cucumber.java.en.Given;
@@ -315,5 +316,144 @@ public class UserSteps {
             return null;
         }
         return value.replaceAll("^\"|\"$", "");
+    }
+
+    // ==================== STEP DEFINITIONS CON JAVAFAKER ====================
+
+    private final List<UserDocument> createdUsers = new ArrayList<>();
+    private UserDocument randomUser;
+    private String randomUserPassword;
+
+    @When("creo {int} usuarios con datos aleatorios")
+    public void creoUsuariosConDatosAleatorios(Integer count) throws Exception {
+        createdUsers.clear();
+
+        for (int i = 0; i < count; i++) {
+            // Generar datos aleatorios usando JavaFaker
+            UserRegistrationRequest request = TestDataGenerator.generateRandomUserRegistration();
+
+            // Crear el usuario que será retornado por el mock
+            UserDocument createdUser = new UserDocument();
+            createdUser.setId(UUID.randomUUID().toString());
+            createdUser.setUsername(request.getUsername());
+            createdUser.setEmail(request.getEmail());
+            createdUser.setPassword(passwordEncoder.encode(request.getPassword()));
+            createdUser.setFirstName(request.getFirstName());
+            createdUser.setLastName(request.getLastName());
+            createdUser.setMobileNumber(request.getMobileNumber());
+            createdUser.setAuthorities(new HashSet<>(Collections.singletonList(Role.USER)));
+
+            // Configurar mocks antes de la petición
+            when(userService.registerUser(any(UserRegistrationRequest.class))).thenReturn(createdUser);
+            when(userRepository.existsByUsername(request.getUsername())).thenReturn(false);
+            when(userRepository.existsByEmail(request.getEmail())).thenReturn(false);
+
+            // Realizar la petición
+            resultActions = mockMvc.perform(post("/api/users")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(objectMapper.writeValueAsString(request)));
+
+            resultActions.andExpect(status().isCreated());
+
+            String responseBody = resultActions.andReturn().getResponse().getContentAsString();
+            UserDocument responseUser = objectMapper.readValue(responseBody, UserDocument.class);
+
+            createdUsers.add(responseUser);
+        }
+    }
+
+    @Then("todos los usuarios son creados exitosamente")
+    public void todosLosUsuariosSonCreadosExitosamente() {
+        assertThat(createdUsers).isNotEmpty();
+        assertThat(createdUsers).hasSize(5);
+
+        for (UserDocument user : createdUsers) {
+            assertThat(user.getId()).isNotNull();
+            assertThat(user.getUsername()).isNotNull();
+            assertThat(user.getEmail()).isNotNull();
+        }
+    }
+
+    @Then("cada usuario tiene datos únicos")
+    public void cadaUsuarioTieneDatosUnicos() {
+        Set<String> usernames = new HashSet<>();
+        Set<String> emails = new HashSet<>();
+
+        for (UserDocument user : createdUsers) {
+            // Verificar que username es único
+            assertThat(usernames.add(user.getUsername()))
+                    .as("Username duplicado encontrado: " + user.getUsername())
+                    .isTrue();
+
+            // Verificar que email es único
+            assertThat(emails.add(user.getEmail()))
+                    .as("Email duplicado encontrado: " + user.getEmail())
+                    .isTrue();
+
+            // Verificar que los campos tienen contenido
+            assertThat(user.getFirstName()).isNotBlank();
+            assertThat(user.getLastName()).isNotBlank();
+            assertThat(user.getMobileNumber()).isNotBlank();
+        }
+    }
+
+    @Given("existe un usuario aleatorio en el sistema")
+    public void existeUnUsuarioAleatorioEnElSistema() {
+        // Generar usuario aleatorio con JavaFaker
+        UserRegistrationRequest request = TestDataGenerator.generateRandomUserRegistration();
+        randomUserPassword = request.getPassword(); // Guardar la contraseña para usarla después
+
+        randomUser = new UserDocument();
+        randomUser.setId(UUID.randomUUID().toString());
+        randomUser.setUsername(request.getUsername());
+        randomUser.setEmail(request.getEmail());
+        randomUser.setPassword(passwordEncoder.encode(request.getPassword()));
+        randomUser.setFirstName(request.getFirstName());
+        randomUser.setLastName(request.getLastName());
+        randomUser.setMobileNumber(request.getMobileNumber());
+        randomUser.setAuthorities(new HashSet<>(Collections.singletonList(Role.USER)));
+
+        // Mock del repositorio
+        when(userRepository.findByUsername(randomUser.getUsername())).thenReturn(Optional.of(randomUser));
+        when(userRepository.findById(randomUser.getId())).thenReturn(Optional.of(randomUser));
+    }
+
+    @When("intento hacer login con las credenciales correctas")
+    public void intentoHacerLoginConLasCredencialesCorrectas() throws Exception {
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername(randomUser.getUsername());
+        loginRequest.setPassword(randomUserPassword);
+
+        // Mock del servicio de login
+        AuthResponse authResponse = new AuthResponse();
+        authResponse.setToken(TestDataGenerator.generateToken());
+        authResponse.setExpiresIn(3600);
+        authResponse.setTokenType("Bearer");
+        authResponse.setUser(randomUser);
+
+        when(userService.login(any(LoginRequest.class))).thenReturn(authResponse);
+
+        resultActions = mockMvc.perform(post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginRequest)));
+    }
+
+    @Then("el login es exitoso con código {int}")
+    public void elLoginEsExitosoConCodigo(Integer statusCode) throws Exception {
+        resultActions.andExpect(status().is(statusCode));
+    }
+
+    @Then("recibo un token JWT válido")
+    public void reciboUnTokenJWTValido() throws Exception {
+        String responseBody = resultActions.andReturn().getResponse().getContentAsString();
+        AuthResponse authResponse = objectMapper.readValue(responseBody, AuthResponse.class);
+
+        assertThat(authResponse).isNotNull();
+        assertThat(authResponse.getToken()).isNotNull();
+        assertThat(authResponse.getToken()).isNotEmpty();
+        assertThat(authResponse.getTokenType()).isEqualTo("Bearer");
+        assertThat(authResponse.getExpiresIn()).isGreaterThan(0);
+        assertThat(authResponse.getUser()).isNotNull();
+        assertThat(authResponse.getUser().getUsername()).isEqualTo(randomUser.getUsername());
     }
 }
