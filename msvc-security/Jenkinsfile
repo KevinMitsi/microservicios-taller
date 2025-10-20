@@ -10,53 +10,81 @@ pipeline {
         DOCKER_IMAGE = 'kevinmitsi/msvc-security'
         DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
         SONAR_TOKEN = credentials('sonarqube-token')
+        MICROSERVICE_DIR = 'msvc-security'
     }
 
     stages {
         stage('Checkout') {
             steps {
-                echo '📥 Descargando código fuente...'
+                echo '📥 Clonando repositorio del proyecto...'
                 checkout scm
+                script {
+                    // Mostrar información del commit
+                    sh 'git log -1 --pretty=format:"%h - %an, %ar : %s"'
+                    sh "echo 'Branch: ${env.GIT_BRANCH}'"
+                }
             }
         }
 
         stage('Build') {
             steps {
                 echo '🔨 Compilando proyecto...'
-                dir('msvc-security') {
+                dir("${MICROSERVICE_DIR}") {
                     sh 'mvn clean compile'
                 }
             }
         }
 
-        stage('Unit Tests') {
+        stage('Unit & Integration Tests') {
             steps {
-                echo '🧪 Ejecutando pruebas unitarias...'
-                dir('msvc-security') {
+                echo '🧪 Ejecutando pruebas unitarias y de integración (Cucumber)...'
+                dir("${MICROSERVICE_DIR}") {
                     sh 'mvn test'
+                    sh 'mvn verify'
                 }
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
+                    // Publicar resultados de JUnit
+                    junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+
+                    // Publicar cobertura de código con JaCoCo
                     jacoco(
                         execPattern: '**/target/jacoco.exec',
                         classPattern: '**/target/classes',
-                        sourcePattern: '**/src/main/java'
+                        sourcePattern: '**/src/main/java',
+                        exclusionPattern: '**/config/**,**/dto/**,**/entity/**,**/model/**'
                     )
+
                     // Publicar reportes de Cucumber
                     cucumber buildStatus: 'UNSTABLE',
-                        reportTitle: 'Cucumber Report',
+                        reportTitle: 'Cucumber BDD Test Report',
                         fileIncludePattern: '**/cucumber-reports/*.json',
-                        trendsLimit: 10
+                        trendsLimit: 10,
+                        classifications: [
+                            [key: 'Browser', value: 'REST API'],
+                            [key: 'Environment', value: 'Test'],
+                            [key: 'Microservice', value: 'msvc-security']
+                        ]
+
+                    // Publicar reportes HTML de Cucumber
+                    publishHTML([
+                        allowMissing: false,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true,
+                        reportDir: "${MICROSERVICE_DIR}/target/cucumber-report-html",
+                        reportFiles: 'overview-features.html',
+                        reportName: 'Cucumber HTML Report',
+                        reportTitles: 'Cucumber Test Results'
+                    ])
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                echo '📊 Analizando calidad de código...'
-                dir('msvc-security') {
+                echo '📊 Analizando calidad de código con SonarQube...'
+                dir("${MICROSERVICE_DIR}") {
                     withSonarQubeEnv('SonarQube') {
                         sh '''
                             mvn sonar:sonar \
@@ -65,7 +93,9 @@ pipeline {
                             -Dsonar.host.url=http://sonarqube:9000 \
                             -Dsonar.login=$SONAR_TOKEN \
                             -Dsonar.java.binaries=target/classes \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                            -Dsonar.junit.reportPaths=target/surefire-reports \
+                            -Dsonar.exclusions=**/config/**,**/dto/**,**/entity/**,**/model/**
                         '''
                     }
                 }
@@ -74,9 +104,15 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo '🚦 Verificando Quality Gate...'
+                echo '🚦 Verificando Quality Gate de SonarQube...'
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    script {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "Pipeline abortado debido a fallo en Quality Gate: ${qg.status}"
+                        }
+                        echo "✅ Quality Gate pasado exitosamente"
+                    }
                 }
             }
         }
@@ -84,8 +120,9 @@ pipeline {
         stage('Package') {
             steps {
                 echo '📦 Empaquetando aplicación...'
-                dir('msvc-security') {
+                dir("${MICROSERVICE_DIR}") {
                     sh 'mvn package -DskipTests'
+                    archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
                 }
             }
         }
@@ -93,7 +130,7 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo '🐳 Construyendo imagen Docker...'
-                dir('msvc-security') {
+                dir("${MICROSERVICE_DIR}") {
                     script {
                         dockerImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
                         docker.build("${DOCKER_IMAGE}:latest")
@@ -131,16 +168,31 @@ pipeline {
             }
         }
 
-        stage('Integration Tests') {
-            when {
-                branch 'develop'
-            }
+        stage('Generate Test Report Summary') {
             steps {
-                echo '🔗 Ejecutando pruebas de integración...'
-                sleep 30 // Esperar a que el servicio esté listo
-                sh '''
-                    curl -f http://localhost:8080/api/health || exit 1
-                '''
+                echo '📋 Generando resumen de reportes...'
+                script {
+                    def testResults = junit '**/target/surefire-reports/*.xml'
+                    def summary = """
+                    ╔════════════════════════════════════════════════════════╗
+                    ║         RESUMEN DE EJECUCIÓN - MSVC SECURITY          ║
+                    ╠════════════════════════════════════════════════════════╣
+                    ║ Build: #${BUILD_NUMBER}
+                    ║ Branch: ${env.GIT_BRANCH}
+                    ║ Tests Totales: ${testResults.totalCount}
+                    ║ Tests Exitosos: ${testResults.passCount}
+                    ║ Tests Fallidos: ${testResults.failCount}
+                    ║ Tests Omitidos: ${testResults.skipCount}
+                    ║
+                    ║ 📊 Reportes disponibles:
+                    ║ - JUnit Test Results
+                    ║ - JaCoCo Coverage Report
+                    ║ - Cucumber BDD Report
+                    ║ - SonarQube Quality Analysis
+                    ╚════════════════════════════════════════════════════════╝
+                    """
+                    echo summary
+                }
             }
         }
     }
@@ -148,14 +200,20 @@ pipeline {
     post {
         always {
             echo '🧹 Limpiando workspace...'
-            cleanWs()
+            // Archivar reportes antes de limpiar
+            archiveArtifacts artifacts: '**/target/cucumber-reports/**/*.*', allowEmptyArchive: true
+            archiveArtifacts artifacts: '**/target/cucumber-report-html/**/*.*', allowEmptyArchive: true
+            archiveArtifacts artifacts: '**/target/site/jacoco/**/*.*', allowEmptyArchive: true
         }
         success {
-            echo '✅ Pipeline ejecutado exitosamente!'
+            echo '✅ ¡Pipeline ejecutado exitosamente!'
+            echo '📊 Todos los reportes están disponibles en la página del build'
+            echo '🔍 Revisa SonarQube para análisis detallado de calidad'
             // Aquí podrías enviar notificaciones (Slack, email, etc.)
         }
         failure {
             echo '❌ Pipeline falló!'
+            echo '⚠️ Revisa los logs y reportes para identificar el problema'
             // Aquí podrías enviar notificaciones de fallo
         }
     }
