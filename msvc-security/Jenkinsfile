@@ -1,0 +1,163 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven'
+        jdk 'JDK-21'
+    }
+
+    environment {
+        DOCKER_IMAGE = 'kevinmitsi/msvc-security'
+        DOCKER_CREDENTIALS = credentials('dockerhub-credentials')
+        SONAR_TOKEN = credentials('sonarqube-token')
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo '📥 Descargando código fuente...'
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo '🔨 Compilando proyecto...'
+                dir('msvc-security') {
+                    sh 'mvn clean compile'
+                }
+            }
+        }
+
+        stage('Unit Tests') {
+            steps {
+                echo '🧪 Ejecutando pruebas unitarias...'
+                dir('msvc-security') {
+                    sh 'mvn test'
+                }
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                    jacoco(
+                        execPattern: '**/target/jacoco.exec',
+                        classPattern: '**/target/classes',
+                        sourcePattern: '**/src/main/java'
+                    )
+                    // Publicar reportes de Cucumber
+                    cucumber buildStatus: 'UNSTABLE',
+                        reportTitle: 'Cucumber Report',
+                        fileIncludePattern: '**/cucumber-reports/*.json',
+                        trendsLimit: 10
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                echo '📊 Analizando calidad de código...'
+                dir('msvc-security') {
+                    withSonarQubeEnv('SonarQube') {
+                        sh '''
+                            mvn sonar:sonar \
+                            -Dsonar.projectKey=msvc-security \
+                            -Dsonar.projectName="MSvc Security" \
+                            -Dsonar.host.url=http://sonarqube:9000 \
+                            -Dsonar.login=$SONAR_TOKEN \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                echo '🚦 Verificando Quality Gate...'
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                echo '📦 Empaquetando aplicación...'
+                dir('msvc-security') {
+                    sh 'mvn package -DskipTests'
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                echo '🐳 Construyendo imagen Docker...'
+                dir('msvc-security') {
+                    script {
+                        dockerImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+                        docker.build("${DOCKER_IMAGE}:latest")
+                    }
+                }
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '🚀 Publicando imagen en Docker Hub...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub-credentials') {
+                        dockerImage.push("${BUILD_NUMBER}")
+                        dockerImage.push("latest")
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to Development') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo '🌐 Desplegando en ambiente de desarrollo...'
+                sh '''
+                    docker-compose -f docker-compose.yml stop msvc-security
+                    docker-compose -f docker-compose.yml rm -f msvc-security
+                    docker-compose -f docker-compose.yml up -d msvc-security
+                '''
+            }
+        }
+
+        stage('Integration Tests') {
+            when {
+                branch 'develop'
+            }
+            steps {
+                echo '🔗 Ejecutando pruebas de integración...'
+                sleep 30 // Esperar a que el servicio esté listo
+                sh '''
+                    curl -f http://localhost:8080/api/health || exit 1
+                '''
+            }
+        }
+    }
+
+    post {
+        always {
+            echo '🧹 Limpiando workspace...'
+            cleanWs()
+        }
+        success {
+            echo '✅ Pipeline ejecutado exitosamente!'
+            // Aquí podrías enviar notificaciones (Slack, email, etc.)
+        }
+        failure {
+            echo '❌ Pipeline falló!'
+            // Aquí podrías enviar notificaciones de fallo
+        }
+    }
+}
+
