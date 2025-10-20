@@ -26,7 +26,7 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '🧹 Limpiando workspace...'
-                    bat 'mvn clean'
+                    sh 'mvn clean'
                     echo '✅ Workspace limpio'
                 }
             }
@@ -36,7 +36,7 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '🔨 Compilando proyecto...'
-                    bat 'mvn compile -DskipTests'
+                    sh 'mvn compile -DskipTests'
                     echo '✅ Proyecto compilado exitosamente'
                 }
             }
@@ -46,7 +46,7 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '🧪 Ejecutando pruebas unitarias e integración...'
-                    bat 'mvn test'
+                    sh 'mvn test'
                     echo '✅ Pruebas completadas'
                 }
             }
@@ -63,7 +63,7 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '📊 Generando reporte de cobertura con JaCoCo...'
-                    bat 'mvn jacoco:report'
+                    sh 'mvn jacoco:report'
                     echo '✅ Reporte de cobertura generado'
                 }
             }
@@ -86,13 +86,13 @@ pipeline {
                 dir('msvc-security') {
                     echo '🔍 Iniciando análisis de calidad con SonarQube...'
                     withSonarQubeEnv('SonarQube') {
-                        bat """
-                            mvn sonar:sonar ^
-                            -Dsonar.projectKey=%SONAR_PROJECT_KEY% ^
-                            -Dsonar.projectName="%SONAR_PROJECT_NAME%" ^
-                            -Dsonar.host.url=%SONAR_HOST_URL% ^
-                            -Dsonar.java.binaries=target/classes ^
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml ^
+                        sh """
+                            mvn sonar:sonar \
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                            -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.java.binaries=target/classes \
+                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                             -Dsonar.junit.reportPaths=target/surefire-reports
                         """
                     }
@@ -115,7 +115,7 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '🥒 Generando reportes de Cucumber...'
-                    bat 'mvn verify -DskipUnitTests=false'
+                    sh 'mvn verify -DskipUnitTests=false'
                     echo '✅ Reportes de Cucumber generados'
                 }
             }
@@ -177,26 +177,8 @@ pipeline {
                     echo "📦 Proyecto: ${env.JOB_NAME}"
                     echo "🔢 Build: #${env.BUILD_NUMBER}"
                     echo "🌿 Rama: ${env.GIT_BRANCH}"
-                    echo "👤 Usuario: Kevin Andres Garcia Aguirre"
                     echo '📋 ======================================'
-                    echo '✅ Etapas Completadas:'
-                    echo '   ✓ Checkout'
-                    echo '   ✓ Clean'
-                    echo '   ✓ Build'
-                    echo '   ✓ Unit & Integration Tests'
-                    echo '   ✓ Code Coverage'
-                    echo '   ✓ SonarQube Analysis'
-                    echo '   ✓ Quality Gate'
-                    echo '   ✓ Cucumber Reports'
-                    echo '   ✓ Publish Reports'
-                    echo '📋 ======================================'
-                    echo '📊 Reportes Disponibles:'
-                    echo "   🔗 Test Results: ${env.BUILD_URL}testReport/"
-                    echo "   🔗 Coverage: ${env.BUILD_URL}JaCoCo_Coverage_Report/"
-                    echo "   🔗 Cucumber: ${env.BUILD_URL}cucumber-html-reports/"
-                    echo "   🔗 SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-                    echo '📋 ======================================'
-                    echo '🎉 Pipeline completado exitosamente!'
+                    echo '✅ Pipeline completado'
                     echo '📋 ======================================'
                 }
             }
@@ -206,24 +188,15 @@ pipeline {
     post {
         success {
             echo '✅ ¡BUILD EXITOSO! 🎉'
-            echo '✅ Todos los tests pasaron'
-            echo '✅ Código cumple con estándares de calidad'
         }
-
         failure {
             echo '❌ BUILD FALLIDO'
-            echo '⚠️ Revisa los logs para identificar el problema'
-            echo '📊 Verifica los reportes de tests y SonarQube'
         }
-
         unstable {
             echo '⚠️ BUILD INESTABLE'
-            echo '⚠️ Algunos tests fallaron o hay issues de calidad'
-            echo '📊 Revisa los reportes para más detalles'
         }
-
         always {
-            echo '🧹 Pipeline finalizado - workspace se mantendrá para análisis'
+            echo '🧹 Pipeline finalizado'
         }
     }
 }
