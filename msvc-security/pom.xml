@@ -278,7 +278,14 @@
 					<!-- jacoco-check execution moved to profile enforce-coverage -->
 				</executions>
 			</plugin>
-		</plugins>
+
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>4.0.0.4121</version>
+            </plugin>
+
+        </plugins>
 	</build>
 
 	<!-- Perfil para imponer la comprobación de cobertura; no está activo por defecto -->

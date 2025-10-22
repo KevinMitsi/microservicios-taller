@@ -5,14 +5,18 @@ pipeline {
         maven 'Maven'
     }
 
-    environment {
-        SONAR_HOST_URL = 'http://sonarqube:9000'
-        SONAR_PROJECT_KEY = 'msvc-security'
-        SONAR_PROJECT_NAME = 'MSVC Security'
-        MAVEN_OPTS = '-Xmx1024m'
-        JAVA_HOME = '/opt/java/openjdk'
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
-    }
+  environment {
+      SONAR_TOKEN       = credentials('sonar_token')
+
+      SONAR_HOST_URL    = 'http://sonarqube:9000'
+      SONAR_PROJECT_KEY = 'msvc-security'
+      SONAR_PROJECT_NAME = 'MSVC Security'
+
+      MAVEN_OPTS = '-Xmx1024m'
+
+      JAVA_HOME = '/opt/java/openjdk'
+      PATH = "${JAVA_HOME}/bin:${env.PATH}"
+  }
 
     stages {
         stage('Checkout') {
@@ -92,6 +96,7 @@ pipeline {
                             -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                             -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
                             -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.login=${SONAR_TOKEN} \
                             -Dsonar.java.binaries=target/classes \
                             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                             -Dsonar.junit.reportPaths=target/surefire-reports
