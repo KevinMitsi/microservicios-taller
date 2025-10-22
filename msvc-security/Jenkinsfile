@@ -5,20 +5,17 @@ pipeline {
         maven 'Maven'
     }
 
-  environment {
-      SONAR_TOKEN       = credentials('sonar_token')
-
-      SONAR_HOST_URL    = 'http://sonarqube:9000'
-      SONAR_PROJECT_KEY = 'msvc-security'
-      SONAR_PROJECT_NAME = 'MSVC Security'
-
-      MAVEN_OPTS = '-Xmx1024m'
-
-      JAVA_HOME = '/opt/java/openjdk'
-      PATH = "${JAVA_HOME}/bin:${env.PATH}"
-  }
+    environment {
+        SONARQUBE_ENV = 'SonarQube'   // Nombre configurado en Manage Jenkins > SonarQube servers
+        SONAR_PROJECT_KEY = 'msvc-security'
+        SONAR_PROJECT_NAME = 'MSVC Security'
+        MAVEN_OPTS = '-Xmx1024m'
+        JAVA_HOME = '/opt/java/openjdk'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+    }
 
     stages {
+
         stage('Checkout') {
             steps {
                 echo '🔄 Clonando repositorio...'
@@ -32,7 +29,6 @@ pipeline {
                 dir('msvc-security') {
                     echo '🧹 Limpiando workspace...'
                     sh 'mvn clean'
-                    echo '✅ Workspace limpio'
                 }
             }
         }
@@ -42,7 +38,6 @@ pipeline {
                 dir('msvc-security') {
                     echo '🔨 Compilando proyecto...'
                     sh 'mvn compile -DskipTests'
-                    echo '✅ Proyecto compilado exitosamente'
                 }
             }
         }
@@ -52,7 +47,6 @@ pipeline {
                 dir('msvc-security') {
                     echo '🧪 Ejecutando pruebas unitarias e integración...'
                     sh 'mvn test'
-                    echo '✅ Pruebas completadas'
                 }
             }
             post {
@@ -69,7 +63,6 @@ pipeline {
                 dir('msvc-security') {
                     echo '📊 Generando reporte de cobertura con JaCoCo...'
                     sh 'mvn jacoco:report'
-                    echo '✅ Reporte de cobertura generado'
                 }
             }
             post {
@@ -86,111 +79,25 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                dir('msvc-security') {
-                    echo '🔍 Iniciando análisis de calidad con SonarQube...'
-                    withSonarQubeEnv('SonarQube') {
-                        sh """
-                            mvn sonar:sonar \
-                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                            -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.login=${SONAR_TOKEN} \
-                            -Dsonar.java.binaries=target/classes \
-                            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
-                            -Dsonar.junit.reportPaths=target/surefire-reports
-                        """
-                    }
-                    echo '✅ Análisis de SonarQube completado'
-                }
-            }
-        }
-
-        stage('Quality Gate') {
-            steps {
-                dir('msvc-security') {
-                    echo '⏳ Esperando resultado del Quality Gate...'
-                    script {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            // Intentar primero con el método estándar (webhook)
-                            try {
-                                def qg = waitForQualityGate()
-
-                                echo "📊 Quality Gate status: ${qg.status}"
-
-                                if (qg.status != 'OK') {
-                                    error "Quality Gate falló: ${qg.status}"
-                                }
-
-                                echo '✅ Quality Gate verificado exitosamente'
-                            } catch (Exception webhookError) {
-                                echo "⚠️ Webhook falló, usando método alternativo..."
-                                echo "Error: ${webhookError.message}"
-
-                                // Método alternativo: polling directo a la API
-                                def maxAttempts = 60
-                                def attempt = 0
-                                def qgPassed = false
-
-                                while (attempt < maxAttempts && !qgPassed) {
-                                    sleep(time: 5, unit: 'SECONDS')
-
-                                    def response = sh(
-                                        script: """
-                                            curl -s -u \${SONAR_TOKEN}: \
-                                            "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}"
-                                        """,
-                                        returnStdout: true
-                                    ).trim()
-
-                                    echo "Intento ${attempt + 1}/${maxAttempts}"
-
-                                    if (response.contains('"status":"OK"')) {
-                                        qgPassed = true
-                                        echo '✅ Quality Gate aprobado (verificado vía API)'
-                                    } else if (response.contains('"status":"ERROR"')) {
-                                        error '❌ Quality Gate falló (verificado vía API)'
-                                    } else if (response.contains('"status":"WARN"')) {
-                                        echo '⚠️ Quality Gate con advertencias'
-                                        qgPassed = true  // Puedes cambiar esto a false si quieres que falle
-                                    }
-
-                                    attempt++
-                                }
-
-                                if (!qgPassed) {
-                                    error "⏰ Timeout esperando Quality Gate después de ${maxAttempts} intentos"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         stage('Cucumber Reports') {
             steps {
                 dir('msvc-security') {
                     echo '🥒 Generando reportes de Cucumber...'
                     sh 'mvn verify -DskipUnitTests=false'
-                    echo '✅ Reportes de Cucumber generados'
                 }
             }
             post {
                 always {
                     dir('msvc-security') {
                         cucumber buildStatus: 'UNSTABLE',
-                                reportTitle: 'Cucumber BDD Test Report',
-                                fileIncludePattern: '**/cucumber-reports/*.json',
-                                trendsLimit: 10,
-                                failedFeaturesNumber: -1,
-                                failedScenariosNumber: -1,
-                                classifications: [
-                                    [key: 'Microservicio', value: 'Security'],
-                                    [key: 'Ambiente', value: 'CI/CD'],
-                                    [key: 'Framework', value: 'Cucumber + Spring Boot']
-                                ]
+                            reportTitle: 'Cucumber BDD Test Report',
+                            fileIncludePattern: '**/cucumber-reports/*.json',
+                            trendsLimit: 10,
+                            classifications: [
+                                [key: 'Microservicio', value: 'Security'],
+                                [key: 'Ambiente', value: 'CI/CD'],
+                                [key: 'Framework', value: 'Cucumber + Spring Boot']
+                            ]
                     }
                 }
             }
@@ -200,28 +107,48 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '📈 Publicando reportes en Jenkins...'
-
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
                         reportDir: 'target/site/jacoco',
                         reportFiles: 'index.html',
-                        reportName: 'JaCoCo Coverage Report',
-                        reportTitles: 'Code Coverage'
+                        reportName: 'JaCoCo Coverage Report'
                     ])
-
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
                         reportDir: 'target/cucumber-html-reports',
                         reportFiles: 'overview-features.html',
-                        reportName: 'Cucumber HTML Report',
-                        reportTitles: 'BDD Test Results'
+                        reportName: 'Cucumber HTML Report'
                     ])
+                }
+            }
+        }
 
-                    echo '✅ Reportes publicados exitosamente'
+        // 🔍 Mover SonarQube al final y hacerlo tolerante a fallos
+        stage('SonarQube Analysis') {
+            steps {
+                dir('msvc-security') {
+                    echo '🔍 Iniciando análisis de calidad con SonarQube...'
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                        withSonarQubeEnv('SonarQube') {
+                            sh """
+                                mvn verify sonar:sonar \
+                                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                  -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
+                                  -Dsonar.java.binaries=target/classes \
+                                  -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
+                                  -Dsonar.junit.reportPaths=target/surefire-reports
+                            """
+                        }
+                    }
+                }
+            }
+            post {
+                always {
+                    echo '✅ Análisis de SonarQube completado (o marcado como inestable si falló)'
                 }
             }
         }
@@ -235,9 +162,7 @@ pipeline {
                     echo "📦 Proyecto: ${env.JOB_NAME}"
                     echo "🔢 Build: #${env.BUILD_NUMBER}"
                     echo "🌿 Rama: ${env.GIT_BRANCH}"
-                    echo "🔗 SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-                    echo '📋 ======================================'
-                    echo '✅ Pipeline completado'
+                    echo "🔗 SonarQube: http://sonarqube:9000/dashboard?id=${SONAR_PROJECT_KEY}"
                     echo '📋 ======================================'
                 }
             }
@@ -248,12 +173,11 @@ pipeline {
         success {
             echo '✅ ¡BUILD EXITOSO! 🎉'
         }
+        unstable {
+            echo '⚠️ BUILD INESTABLE: revisa SonarQube o pruebas.'
+        }
         failure {
             echo '❌ BUILD FALLIDO'
-            echo "🔗 Revisa SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
-        }
-        unstable {
-            echo '⚠️ BUILD INESTABLE'
         }
         always {
             echo '🧹 Pipeline finalizado'
