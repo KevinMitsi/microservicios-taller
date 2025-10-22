@@ -110,9 +110,14 @@ pipeline {
         stage('Quality Gate') {
             steps {
                 echo '⏳ Esperando resultado del Quality Gate...'
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true, taskFile: 'msvc-security/target/sonar/report-task.txt'
+                timeout(time: 10, unit: 'MINUTES') {  // Aumenta el timeout
+                    script {
+                        def qg = waitForQualityGate()  // Usa la configuración del webhook
+                        if (qg.status != 'OK') {
+                            error "Pipeline abortado debido a fallo en Quality Gate: ${qg.status}"
+                        }
                     }
+                }
                 echo '✅ Quality Gate verificado'
             }
         }
