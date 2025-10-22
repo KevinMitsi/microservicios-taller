@@ -6,7 +6,8 @@ pipeline {
     }
 
     environment {
-        SONARQUBE_ENV = 'SonarQube'   // Nombre configurado en Manage Jenkins > SonarQube servers
+        SONAR_TOKEN = credentials('sonar_token')
+        SONARQUBE_ENV = 'SonarQube'   // Nombre del servidor configurado en Jenkins > Manage Jenkins > SonarQube servers
         SONAR_PROJECT_KEY = 'msvc-security'
         SONAR_PROJECT_NAME = 'MSVC Security'
         MAVEN_OPTS = '-Xmx1024m'
@@ -29,6 +30,7 @@ pipeline {
                 dir('msvc-security') {
                     echo '🧹 Limpiando workspace...'
                     sh 'mvn clean'
+                    echo '✅ Workspace limpio'
                 }
             }
         }
@@ -38,6 +40,7 @@ pipeline {
                 dir('msvc-security') {
                     echo '🔨 Compilando proyecto...'
                     sh 'mvn compile -DskipTests'
+                    echo '✅ Proyecto compilado exitosamente'
                 }
             }
         }
@@ -47,6 +50,7 @@ pipeline {
                 dir('msvc-security') {
                     echo '🧪 Ejecutando pruebas unitarias e integración...'
                     sh 'mvn test'
+                    echo '✅ Pruebas completadas'
                 }
             }
             post {
@@ -63,6 +67,7 @@ pipeline {
                 dir('msvc-security') {
                     echo '📊 Generando reporte de cobertura con JaCoCo...'
                     sh 'mvn jacoco:report'
+                    echo '✅ Reporte de cobertura generado'
                 }
             }
             post {
@@ -84,6 +89,7 @@ pipeline {
                 dir('msvc-security') {
                     echo '🥒 Generando reportes de Cucumber...'
                     sh 'mvn verify -DskipUnitTests=false'
+                    echo '✅ Reportes de Cucumber generados'
                 }
             }
             post {
@@ -107,47 +113,51 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '📈 Publicando reportes en Jenkins...'
+
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
                         reportDir: 'target/site/jacoco',
                         reportFiles: 'index.html',
-                        reportName: 'JaCoCo Coverage Report'
+                        reportName: 'JaCoCo Coverage Report',
+                        reportTitles: 'Code Coverage'
                     ])
+
                     publishHTML([
                         allowMissing: false,
                         alwaysLinkToLastBuild: true,
                         keepAll: true,
                         reportDir: 'target/cucumber-html-reports',
                         reportFiles: 'overview-features.html',
-                        reportName: 'Cucumber HTML Report'
+                        reportName: 'Cucumber HTML Report',
+                        reportTitles: 'BDD Test Results'
                     ])
+
+                    echo '✅ Reportes publicados exitosamente'
                 }
             }
         }
 
-        // 🔍 Mover SonarQube al final y hacerlo tolerante a fallos
+        // 🔍 Mover SonarQube al final (tolerante a fallos)
         stage('SonarQube Analysis') {
             steps {
                 dir('msvc-security') {
                     echo '🔍 Iniciando análisis de calidad con SonarQube...'
                     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        withSonarQubeEnv('SonarQube') {
+                        withSonarQubeEnv("${SONARQUBE_ENV}") {
                             sh """
-                                mvn verify sonar:sonar \
+                                mvn sonar:sonar \
                                   -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
                                   -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.login=${SONAR_TOKEN} \
                                   -Dsonar.java.binaries=target/classes \
                                   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                                   -Dsonar.junit.reportPaths=target/surefire-reports
                             """
                         }
                     }
-                }
-            }
-            post {
-                always {
                     echo '✅ Análisis de SonarQube completado (o marcado como inestable si falló)'
                 }
             }
@@ -164,6 +174,8 @@ pipeline {
                     echo "🌿 Rama: ${env.GIT_BRANCH}"
                     echo "🔗 SonarQube: http://sonarqube:9000/dashboard?id=${SONAR_PROJECT_KEY}"
                     echo '📋 ======================================'
+                    echo '✅ Pipeline completado'
+                    echo '📋 ======================================'
                 }
             }
         }
@@ -173,11 +185,12 @@ pipeline {
         success {
             echo '✅ ¡BUILD EXITOSO! 🎉'
         }
-        unstable {
-            echo '⚠️ BUILD INESTABLE: revisa SonarQube o pruebas.'
-        }
         failure {
             echo '❌ BUILD FALLIDO'
+            echo "🔗 Revisa SonarQube: http://sonarqube:9000/dashboard?id=msvc-security"
+        }
+        unstable {
+            echo '⚠️ BUILD INESTABLE'
         }
         always {
             echo '🧹 Pipeline finalizado'
