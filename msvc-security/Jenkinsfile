@@ -106,8 +106,8 @@ pipeline {
             steps {
                 echo '⏳ Esperando resultado del Quality Gate...'
                 timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: false
-                }
+                    waitForQualityGate abortPipeline: true, taskFile: 'msvc-security/target/sonar/report-task.txt'
+                    }
                 echo '✅ Quality Gate verificado'
             }
         }
