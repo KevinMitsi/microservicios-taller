@@ -7,7 +7,7 @@ pipeline {
 
     environment {
         // Asegúrate de tener la credencial "sonar_token" en Jenkins (Secret Text)
-        SONAR_TOKEN = credentials('sonarqube-token')
+        SONAR_TOKEN = credentials('sonar_token')
         // Nombre del servidor SonarQube configurado en Manage Jenkins -> SonarQube servers
         SONARQUBE_ENV = 'SonarQube'
         SONAR_PROJECT_KEY = 'msvc-security'
@@ -146,9 +146,7 @@ pipeline {
             steps {
                 dir('msvc-security') {
                     echo '🔍 Iniciando análisis de calidad con SonarQube...'
-                    catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        // withSonarQubeEnv inyecta la configuración del servidor Sonar (URL / token) tal como esté
-                        // configurado en Jenkins (Manage Jenkins -> SonarQube servers)
+                    catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
                         withSonarQubeEnv("${env.SONARQUBE_ENV}") {
                             sh """
                                 mvn sonar:sonar \
@@ -168,6 +166,9 @@ pipeline {
         stage('Report Results') {
             steps {
                 script {
+                    // DEBUG antes del post para facilitar diagnóstico si algo marca FAILURE al final
+                    echo "DEBUG: currentBuild.currentResult (antes de post) = ${currentBuild.currentResult}"
+                    echo "DEBUG: currentBuild.result = ${currentBuild.result}"
                     echo '📋 ======================================'
                     echo '📋 RESUMEN DE EJECUCIÓN DEL PIPELINE'
                     echo '📋 ======================================'
@@ -189,9 +190,14 @@ pipeline {
             echo '✅ ¡BUILD EXITOSO! 🎉'
         }
         failure {
-            echo '❌ BUILD FALLIDO'
-            // Uso seguro de env.* y fallback para evitar MissingPropertyException
-            echo "🔗 Revisa SonarQube: ${env.SONAR_HOST_URL ?: 'http://sonarqube:9000'}/dashboard?id=${env.SONAR_PROJECT_KEY ?: 'msvc-security'}"
+            script {
+                def result = currentBuild.currentResult ?: 'FAILURE'
+                echo "❌ BUILD FALLIDO (estado final: ${result})"
+                // Link directo a la consola para debug rápido
+                echo "🔗 Revisa la consola: ${env.BUILD_URL}console"
+                // Fallback seguro al mostrar Sonar dashboard
+                echo "🔗 Revisa SonarQube: ${env.SONAR_HOST_URL ?: 'http://sonarqube:9000'}/dashboard?id=${env.SONAR_PROJECT_KEY ?: 'msvc-security'}"
+            }
         }
         unstable {
             echo '⚠️ BUILD INESTABLE'
