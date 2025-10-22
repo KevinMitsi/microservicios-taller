@@ -6,8 +6,10 @@ pipeline {
     }
 
     environment {
-        SONAR_TOKEN = credentials('sonar_token')
-        SONARQUBE_ENV = 'SonarQube'   // Nombre del servidor configurado en Jenkins > Manage Jenkins > SonarQube servers
+        // Asegúrate de tener la credencial "sonar_token" en Jenkins (Secret Text)
+        SONAR_TOKEN = credentials('sonarqube-token')
+        // Nombre del servidor SonarQube configurado en Manage Jenkins -> SonarQube servers
+        SONARQUBE_ENV = 'SonarQube'
         SONAR_PROJECT_KEY = 'msvc-security'
         SONAR_PROJECT_NAME = 'MSVC Security'
         MAVEN_OPTS = '-Xmx1024m'
@@ -139,19 +141,19 @@ pipeline {
             }
         }
 
-        // 🔍 Mover SonarQube al final (tolerante a fallos)
+        // 🔍 SonarQube al final (tolerante a fallos)
         stage('SonarQube Analysis') {
             steps {
                 dir('msvc-security') {
                     echo '🔍 Iniciando análisis de calidad con SonarQube...'
                     catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                        withSonarQubeEnv("${SONARQUBE_ENV}") {
+                        // withSonarQubeEnv inyecta la configuración del servidor Sonar (URL / token) tal como esté
+                        // configurado en Jenkins (Manage Jenkins -> SonarQube servers)
+                        withSonarQubeEnv("${env.SONARQUBE_ENV}") {
                             sh """
                                 mvn sonar:sonar \
-                                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                                  -Dsonar.projectName="${SONAR_PROJECT_NAME}" \
-                                  -Dsonar.host.url=${SONAR_HOST_URL} \
-                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.projectKey=${env.SONAR_PROJECT_KEY} \
+                                  -Dsonar.projectName="${env.SONAR_PROJECT_NAME}" \
                                   -Dsonar.java.binaries=target/classes \
                                   -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml \
                                   -Dsonar.junit.reportPaths=target/surefire-reports
@@ -172,7 +174,8 @@ pipeline {
                     echo "📦 Proyecto: ${env.JOB_NAME}"
                     echo "🔢 Build: #${env.BUILD_NUMBER}"
                     echo "🌿 Rama: ${env.GIT_BRANCH}"
-                    echo "🔗 SonarQube: http://sonarqube:9000/dashboard?id=${SONAR_PROJECT_KEY}"
+                    // Si withSonarQubeEnv inyectó SONAR_HOST_URL estará disponible en env, si no, cae al fallback
+                    echo "🔗 SonarQube: ${env.SONAR_HOST_URL ?: 'http://sonarqube:9000'}/dashboard?id=${env.SONAR_PROJECT_KEY}"
                     echo '📋 ======================================'
                     echo '✅ Pipeline completado'
                     echo '📋 ======================================'
@@ -187,7 +190,8 @@ pipeline {
         }
         failure {
             echo '❌ BUILD FALLIDO'
-            echo "🔗 Revisa SonarQube: http://sonarqube:9000/dashboard?id=msvc-security"
+            // Uso seguro de env.* y fallback para evitar MissingPropertyException
+            echo "🔗 Revisa SonarQube: ${env.SONAR_HOST_URL ?: 'http://sonarqube:9000'}/dashboard?id=${env.SONAR_PROJECT_KEY ?: 'msvc-security'}"
         }
         unstable {
             echo '⚠️ BUILD INESTABLE'
