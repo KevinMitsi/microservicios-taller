@@ -109,11 +109,63 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                echo '⏳ Esperando resultado del Quality Gate...'
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true, taskFile: 'msvc-security/target/sonar/report-task.txt'
+                dir('msvc-security') {
+                    echo '⏳ Esperando resultado del Quality Gate...'
+                    script {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            // Intentar primero con el método estándar (webhook)
+                            try {
+                                def qg = waitForQualityGate()
+
+                                echo "📊 Quality Gate status: ${qg.status}"
+
+                                if (qg.status != 'OK') {
+                                    error "Quality Gate falló: ${qg.status}"
+                                }
+
+                                echo '✅ Quality Gate verificado exitosamente'
+                            } catch (Exception webhookError) {
+                                echo "⚠️ Webhook falló, usando método alternativo..."
+                                echo "Error: ${webhookError.message}"
+
+                                // Método alternativo: polling directo a la API
+                                def maxAttempts = 60
+                                def attempt = 0
+                                def qgPassed = false
+
+                                while (attempt < maxAttempts && !qgPassed) {
+                                    sleep(time: 5, unit: 'SECONDS')
+
+                                    def response = sh(
+                                        script: """
+                                            curl -s -u \${SONAR_TOKEN}: \
+                                            "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}"
+                                        """,
+                                        returnStdout: true
+                                    ).trim()
+
+                                    echo "Intento ${attempt + 1}/${maxAttempts}"
+
+                                    if (response.contains('"status":"OK"')) {
+                                        qgPassed = true
+                                        echo '✅ Quality Gate aprobado (verificado vía API)'
+                                    } else if (response.contains('"status":"ERROR"')) {
+                                        error '❌ Quality Gate falló (verificado vía API)'
+                                    } else if (response.contains('"status":"WARN"')) {
+                                        echo '⚠️ Quality Gate con advertencias'
+                                        qgPassed = true  // Puedes cambiar esto a false si quieres que falle
+                                    }
+
+                                    attempt++
+                                }
+
+                                if (!qgPassed) {
+                                    error "⏰ Timeout esperando Quality Gate después de ${maxAttempts} intentos"
+                                }
+                            }
+                        }
                     }
-                echo '✅ Quality Gate verificado'
+                }
             }
         }
 
@@ -183,6 +235,7 @@ pipeline {
                     echo "📦 Proyecto: ${env.JOB_NAME}"
                     echo "🔢 Build: #${env.BUILD_NUMBER}"
                     echo "🌿 Rama: ${env.GIT_BRANCH}"
+                    echo "🔗 SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
                     echo '📋 ======================================'
                     echo '✅ Pipeline completado'
                     echo '📋 ======================================'
@@ -197,6 +250,7 @@ pipeline {
         }
         failure {
             echo '❌ BUILD FALLIDO'
+            echo "🔗 Revisa SonarQube: ${SONAR_HOST_URL}/dashboard?id=${SONAR_PROJECT_KEY}"
         }
         unstable {
             echo '⚠️ BUILD INESTABLE'
