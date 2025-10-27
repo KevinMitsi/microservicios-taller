@@ -15,6 +15,7 @@ services:
     image: grafana/promtail:2.9.0
     container_name: promtail
     volumes:
+        - /var/run/docker.sock:/var/run/docker.sock:ro
         - /var/lib/docker/containers:/var/lib/docker/containers:ro
         - /var/log:/var/log
         - ./promtail-config.yml:/etc/promtail/config.yml
