@@ -13,3 +13,16 @@ spring:
     level:
       root: INFO
       org.springframework.web: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+app:
+  version: 1.0.0
