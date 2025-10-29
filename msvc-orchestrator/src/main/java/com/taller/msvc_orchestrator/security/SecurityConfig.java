@@ -28,6 +28,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/notifications/channels").permitAll()
                         .requestMatchers("/api/notifications/**").authenticated()
                         .requestMatchers("api/notifications").authenticated()
+                        .requestMatchers("/health/**").permitAll()
                         .anyRequest().denyAll()
                 );
 
