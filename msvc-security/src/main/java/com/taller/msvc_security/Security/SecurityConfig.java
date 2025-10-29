@@ -42,7 +42,9 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
                                 "/webjars/**"
+
                         ).permitAll()
+                        .requestMatchers("/health/**").permitAll()
                         .requestMatchers("/api/auth/tokens").permitAll()
                         .requestMatchers("/api/auth/password-recovery").permitAll()
                         .requestMatchers("/api/auth/password-reset").permitAll()

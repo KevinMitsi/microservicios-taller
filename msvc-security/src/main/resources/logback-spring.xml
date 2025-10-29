@@ -6,26 +6,19 @@
 
     <!-- Appender Loki (loki4j) -->
     <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
-        <batchSize>50</batchSize>
-        <batchTimeoutMs>2000</batchTimeoutMs>
-
         <http>
             <!-- Usa la variable de entorno LOGGING_URL definida en docker-compose -->
             <url>${LOGGING_URL:-http://localhost:3100}/loki/api/v1/push</url>
-            <maxRetries>3</maxRetries>
-            <connectTimeoutMs>2000</connectTimeoutMs>
-            <readTimeoutMs>2000</readTimeoutMs>
         </http>
 
-        <labels>
-            <label name="app">msvc-security</label>
-            <label name="env">${ENVIRONMENT:-dev}</label>
-            <label name="instance">${HOSTNAME:-unknown}</label>
-        </labels>
-
-        <layout class="ch.qos.logback.classic.PatternLayout">
-            <pattern>${PATTERN}</pattern>
-        </layout>
+        <format>
+            <label>
+                <pattern>app=msvc-security,env=${ENVIRONMENT:-dev},instance=${HOSTNAME:-unknown}</pattern>
+            </label>
+            <message>
+                <pattern>${PATTERN}</pattern>
+            </message>
+        </format>
     </appender>
 
     <!-- Console appender opcional para desarrollo local -->
@@ -43,6 +36,6 @@
 
     <!-- Niveles específicos -->
     <logger name="org.springframework" level="WARN"/>
-    <logger name="com.yourcompany.package" level="DEBUG"/>
+    <logger name="com.taller" level="DEBUG"/>
 
 </configuration>
