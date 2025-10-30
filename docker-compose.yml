@@ -1,6 +1,16 @@
 version: "3.9"
 
 services:
+  msvc-monitoring:
+    image: kevinmitsi/msvc-monitoring:latest
+    container_name: msvc-monitoring
+    ports:
+      - "8000:8000"
+    networks:
+      - msvc-net
+    environment:
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
 
   loki:
     image: grafana/loki:2.9.0
