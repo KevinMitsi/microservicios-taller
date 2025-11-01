@@ -1,0 +1,129 @@
+pipeline {
+    agent any
+
+    tools {
+        maven 'Maven 3.8'
+        jdk 'Java 21'
+    }
+
+    environment {
+        DOCKER_COMPOSE_FILE = 'docker-compose.yml'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Clonando repositorio...'
+                checkout scm
+            }
+        }
+
+        stage('Start Services') {
+            steps {
+                echo 'Iniciando servicios con Docker Compose...'
+                script {
+                    sh 'docker-compose -f ${DOCKER_COMPOSE_FILE} up -d'
+                    // Esperar a que los servicios estén listos
+                    sleep(time: 60, unit: 'SECONDS')
+                }
+            }
+        }
+
+        stage('Wait for Services') {
+            steps {
+                echo 'Esperando a que los servicios estén disponibles...'
+                script {
+                    timeout(time: 5, unit: 'MINUTES') {
+                        waitUntil {
+                            script {
+                                def securityReady = sh(
+                                    script: 'curl -f http://localhost:8080/api/health || exit 1',
+                                    returnStatus: true
+                                ) == 0
+
+                                def saludoReady = sh(
+                                    script: 'curl -f http://localhost:80/api/health || exit 1',
+                                    returnStatus: true
+                                ) == 0
+
+                                def consumerReady = sh(
+                                    script: 'curl -f http://localhost:8081/api/health || exit 1',
+                                    returnStatus: true
+                                ) == 0
+
+                                def orchestratorReady = sh(
+                                    script: 'curl -f http://localhost:8083/api/health || exit 1',
+                                    returnStatus: true
+                                ) == 0
+
+                                return securityReady && saludoReady && consumerReady && orchestratorReady
+                            }
+                        }
+                    }
+                }
+                echo 'Todos los servicios están listos!'
+            }
+        }
+
+        stage('Smoke Test') {
+            steps {
+                echo 'Ejecutando pruebas de humo...'
+                dir('integration-tests') {
+                    sh 'mvn test -Dtest=SmokeTest'
+                }
+            }
+        }
+
+        stage('Integration Tests') {
+            steps {
+                echo 'Ejecutando pruebas de integración completas...'
+                dir('integration-tests') {
+                    sh 'mvn clean test'
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Publicando reportes de pruebas...'
+
+            // Publicar resultados JUnit
+            junit 'integration-tests/target/surefire-reports/*.xml'
+
+            // Publicar reporte HTML de Cucumber
+            publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'integration-tests/target',
+                reportFiles: 'cucumber-reports.html',
+                reportName: 'Cucumber Report',
+                reportTitles: 'Reporte de Pruebas BDD'
+            ])
+
+            // Archivar reportes
+            archiveArtifacts artifacts: 'integration-tests/target/surefire-reports/**/*', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'integration-tests/target/cucumber-reports.html', allowEmptyArchive: true
+
+            echo 'Deteniendo servicios...'
+            sh 'docker-compose -f ${DOCKER_COMPOSE_FILE} down -v'
+        }
+
+        success {
+            echo '✅ Todas las pruebas de integración pasaron exitosamente!'
+        }
+
+        failure {
+            echo '❌ Algunas pruebas de integración fallaron'
+            echo 'Mostrando logs de servicios...'
+            sh '''
+                docker-compose logs msvc-security || true
+                docker-compose logs msvc-saludo || true
+                docker-compose logs msvc-consumer || true
+                docker-compose logs msvc-orchestrator || true
+            '''
+        }
+    }
+}
+
