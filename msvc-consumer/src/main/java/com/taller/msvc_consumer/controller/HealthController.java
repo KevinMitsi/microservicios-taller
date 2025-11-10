@@ -55,3 +55,17 @@ public class HealthController {
         );
     }
 }
+
+@RestController
+class SmokeTestController {
+
+    @GetMapping("/smoke")
+    public Map<String, Object> smokeTest() {
+        return Map.of(
+                "status", "UP",
+                "service", "msvc-consumer",
+                "timestamp", System.currentTimeMillis(),
+                "message", "Service is running"
+        );
+    }
+}

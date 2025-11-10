@@ -45,6 +45,9 @@ public class SecurityConfig {
 
                         ).permitAll()
                         .requestMatchers("/health/**").permitAll()
+                        .requestMatchers("/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
+                        .requestMatchers("/smoke").permitAll()
                         .requestMatchers("/api/auth/tokens").permitAll()
                         .requestMatchers("/api/auth/password-recovery").permitAll()
                         .requestMatchers("/api/auth/password-reset").permitAll()
