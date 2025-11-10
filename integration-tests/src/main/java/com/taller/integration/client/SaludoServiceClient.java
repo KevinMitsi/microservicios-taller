@@ -18,4 +18,8 @@ public class SaludoServiceClient {
     public Response healthCheck() {
         throw new UnsupportedOperationException("Stub en main; las pruebas usan la implementación en src/test que depende de RestAssured.");
     }
+
+    public Response getTestGreeting(String nombre) {
+        throw new UnsupportedOperationException("Stub en main; las pruebas usan la implementación en src/test que depende de RestAssured.");
+    }
 }

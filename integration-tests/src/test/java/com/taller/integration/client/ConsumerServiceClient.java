@@ -62,6 +62,24 @@ public class ConsumerServiceClient {
             // Continuar con actuator
         }
 
+        // Intentar con /consumeApps/{nameForGreeting}
+        try {
+            Response response = given()
+                    .baseUri(config.getConsumerBaseUrl())
+                    .pathParam("nameForGreeting", "HealthCheck")
+                    .when()
+                    .get("/consumeApps/{nameForGreeting}")
+                    .then()
+                    .extract()
+                    .response();
+
+            if (Arrays.asList(200, 202, 204).contains(response.getStatusCode())) {
+                return response;
+            }
+        } catch (Exception e) {
+            // Continuar con otros endpoints
+        }
+
         // Si falló, intentar con /actuator/health
         return given()
                 .baseUri(config.getConsumerBaseUrl())
@@ -120,4 +138,3 @@ public class ConsumerServiceClient {
         }
     }
 }
-

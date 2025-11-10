@@ -32,6 +32,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(@NonNull HttpServletRequest request, @NonNull HttpServletResponse response, @NonNull FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Omitir filtro JWT para rutas públicas
+        if (isPublicPath(request.getRequestURI())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         try {
             String jwt = parseJwt(request);
 
@@ -49,12 +55,44 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         new UsernamePasswordAuthenticationToken(username, null, authorities);
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                System.out.println("Request to: " + request.getRequestURI() + "  Auth header: " +
+                                 (parseJwt(request) != null ? "present but invalid" : "missing"));
             }
         } catch (Exception e) {
             logger.error(e.getMessage());
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    /**
+     * Verifica si la ruta es pública y no necesita autenticación
+     */
+    private boolean isPublicPath(String path) {
+        String[] publicPaths = {
+            "/api/auth/login",
+            "/api/auth/tokens",
+            "/api/auth/password-recovery",
+            "/api/auth/password-reset",
+            "/health",
+            "/actuator/health",
+            "/actuator/info",
+            "/smoke",
+            "/swagger-ui",
+            "/v3/api-docs",
+            "/swagger-resources",
+            "/webjars"
+        };
+
+        for (String publicPath : publicPaths) {
+            if (path.startsWith(publicPath)) {
+                return true;
+            }
+        }
+
+        // También permitir POST a /api/users (registro)
+        return path.equals("/api/users");
     }
 
     private String parseJwt(HttpServletRequest request) {

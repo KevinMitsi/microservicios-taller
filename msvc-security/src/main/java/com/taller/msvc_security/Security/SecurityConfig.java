@@ -3,6 +3,7 @@ package com.taller.msvc_security.Security;
 import com.taller.msvc_security.utils.JwtUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -30,11 +31,22 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Rutas públicas
+                        // Rutas públicas de autenticación
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers("/api/users").permitAll()
+                        .requestMatchers("/api/auth/tokens").permitAll()
+                        .requestMatchers("/api/auth/password-recovery").permitAll()
+                        .requestMatchers("/api/auth/password-reset").permitAll()
+
+                        // Registro público (POST)
+                        .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+
+                        // Health checks y monitoring
+                        .requestMatchers("/health/**").permitAll()
+                        .requestMatchers("/actuator/health/**").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
+                        .requestMatchers("/smoke").permitAll()
+
                         // Swagger (importante permitir todos los recursos)
-                        // Swagger + OpenAPI
                         .requestMatchers(
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -42,17 +54,14 @@ public class SecurityConfig {
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
                                 "/webjars/**"
-
                         ).permitAll()
-                        .requestMatchers("/health/**").permitAll()
-                        .requestMatchers("/actuator/health/**").permitAll()
-                        .requestMatchers("/actuator/info").permitAll()
-                        .requestMatchers("/smoke").permitAll()
-                        .requestMatchers("/api/auth/tokens").permitAll()
-                        .requestMatchers("/api/auth/password-recovery").permitAll()
-                        .requestMatchers("/api/auth/password-reset").permitAll()
+
+                        // Operaciones administrativas requieren ADMIN
+                        .requestMatchers(HttpMethod.GET, "/api/users").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/users/**").hasRole("ADMIN")
+
                         // Todas las demás rutas requieren autenticación
-                        .requestMatchers("/api/users").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 );
 

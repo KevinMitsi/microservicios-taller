@@ -3,13 +3,19 @@ package com.taller.integration.tests;
 import com.taller.integration.IntegrationTestApplication;
 import com.taller.integration.client.*;
 import com.taller.integration.config.IntegrationTestConfig;
+import com.taller.integration.dto.LoginRequest;
+import io.restassured.RestAssured;
+import io.restassured.config.ObjectMapperConfig;
 import io.restassured.response.Response;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import static io.restassured.config.ObjectMapperConfig.objectMapperConfig;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -71,6 +77,28 @@ public class SystemIntegrationTest {
                         return false;
                     }
                 });
+    }
+
+    @BeforeAll
+    public void generateAuthToken() {
+        System.out.println("=== Generando token para las pruebas ===");
+
+        // Crear una solicitud de inicio de sesión
+        LoginRequest loginRequest = new LoginRequest("testuser", "password123");
+        Response loginResponse = securityClient.login(loginRequest);
+
+        // Verificar que la respuesta sea exitosa
+        assertThat(loginResponse.getStatusCode()).isEqualTo(200);
+
+        // Almacenar el token generado
+        authToken = loginResponse.jsonPath().getString("token");
+        System.out.println("✓ Token generado: " + authToken);
+    }
+
+    @BeforeAll
+    public void configureRestAssured() {
+        RestAssured.config = RestAssured.config()
+            .objectMapperConfig(objectMapperConfig().jackson2ObjectMapperFactory((cls, charset) -> new ObjectMapper())); // Eliminado jsonPathConfig debido a incompatibilidad
     }
 
     @Test

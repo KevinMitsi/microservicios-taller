@@ -25,10 +25,16 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Health checks y monitoring
                         .requestMatchers("/health/**").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
                         .requestMatchers("/actuator/info").permitAll()
                         .requestMatchers("/smoke").permitAll()
+
+                        // Endpoint público para tests
+                        .requestMatchers("/saludo/test").permitAll()
+
+                        // Todas las demás rutas requieren autenticación
                         .anyRequest().authenticated()
                 );
 

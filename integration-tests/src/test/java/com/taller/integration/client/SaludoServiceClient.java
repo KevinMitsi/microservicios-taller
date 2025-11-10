@@ -25,6 +25,17 @@ public class SaludoServiceClient {
                 .response();
     }
 
+    public Response getTestGreeting(String nombre) {
+        return given()
+                .baseUri(config.getSaludoBaseUrl())
+                .queryParam("nombre", nombre)
+                .when()
+                .get("/saludo/test")
+                .then()
+                .extract()
+                .response();
+    }
+
     public Response healthCheck() {
         // Primero intentar con /smoke (específico para tests)
         try {

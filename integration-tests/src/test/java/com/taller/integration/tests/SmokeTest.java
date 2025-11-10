@@ -97,8 +97,8 @@ public class SmokeTest {
         Response response = securityClient.healthCheck();
 
         assertThat(response.getStatusCode())
-                .as("El servicio de seguridad debe responder")
-                .isIn(200, 403); // 200 = disponible, 403 = disponible pero protegido
+                .as("El servicio de seguridad debe responder (200=OK, 403=disponible pero protegido)")
+                .isIn(200, 403); // 403 indica que el servicio está corriendo pero protegido
 
         System.out.println("✓ Conectividad con msvc-security verificada\n");
     }
@@ -111,10 +111,33 @@ public class SmokeTest {
         Response response = saludoClient.healthCheck();
 
         assertThat(response.getStatusCode())
-                .as("El servicio de saludo debe responder")
-                .isIn(200, 403); // 200 = disponible, 403 = disponible pero protegido
+                .as("El servicio de saludo debe responder (200=OK, 403=disponible pero protegido)")
+                .isIn(200, 403); // 403 indica que el servicio está corriendo pero protegido
 
         System.out.println("✓ Conectividad con msvc-saludo verificada\n");
+    }
+
+    @Test
+    @DisplayName("Smoke Test: Verificar funcionalidad real end-to-end")
+    public void smokeTest_realFunctionalityEndToEnd() {
+        System.out.println("\n=== SMOKE TEST: Funcionalidad real end-to-end ===\n");
+
+        // Usar consumer que internamente maneja autenticación y saludo
+        Response response = consumerClient.consumeApps("SmokeTestUser");
+
+        System.out.println("Consumer response status: " + response.getStatusCode());
+        System.out.println("Consumer response body: " + response.asString());
+
+        assertThat(response.getStatusCode())
+                .as("El flujo completo debe funcionar correctamente")
+                .isIn(200, 201);
+
+        String responseBody = response.getBody().asString();
+        assertThat(responseBody)
+                .as("La respuesta debe contener el saludo")
+                .containsAnyOf("Hola", "SmokeTestUser", "saludo");
+
+        System.out.println("✓ Funcionalidad end-to-end verificada correctamente\n");
     }
 
     /**
