@@ -68,7 +68,7 @@ public class SecurityServiceClient {
         return given()
                 .baseUri(config.getSecurityBaseUrl())
                 .when()
-                .get("/api/health")
+                .get("/health")
                 .then()
                 .extract()
                 .response();
