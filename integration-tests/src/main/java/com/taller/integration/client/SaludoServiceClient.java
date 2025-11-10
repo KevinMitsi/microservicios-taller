@@ -5,8 +5,6 @@ import io.restassured.response.Response;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
-import static io.restassured.RestAssured.given;
-
 @Component
 @RequiredArgsConstructor
 public class SaludoServiceClient {
@@ -14,25 +12,10 @@ public class SaludoServiceClient {
     private final IntegrationTestConfig config;
 
     public Response getGreeting(String nombre, String token) {
-        return given()
-                .baseUri(config.getSaludoBaseUrl())
-                .header("Authorization", token)
-                .queryParam("nombre", nombre)
-                .when()
-                .get("/saludo")
-                .then()
-                .extract()
-                .response();
+        throw new UnsupportedOperationException("Stub en main; las pruebas usan la implementación en src/test que depende de RestAssured.");
     }
 
     public Response healthCheck() {
-        return given()
-                .baseUri(config.getSaludoBaseUrl())
-                .when()
-                .get("/api/health")
-                .then()
-                .extract()
-                .response();
+        throw new UnsupportedOperationException("Stub en main; las pruebas usan la implementación en src/test que depende de RestAssured.");
     }
 }
-
