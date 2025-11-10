@@ -34,7 +34,7 @@ public class SmokeTest {
 
     @Test
     @DisplayName("Smoke Test: Verificar que todos los servicios están disponibles")
-    public void smokeTest_allServicesAvailable() {
+    void smokeTest_allServicesAvailable() {
         System.out.println("\n=== SMOKE TEST: Verificando disponibilidad de servicios ===\n");
 
         boolean allServicesUp = true;

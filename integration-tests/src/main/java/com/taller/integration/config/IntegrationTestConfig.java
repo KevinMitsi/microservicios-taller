@@ -9,9 +9,9 @@ import lombok.Data;
 @Data
 public class IntegrationTestConfig {
 
-    private String consumerBaseUrl = "http://localhost:8081";
     private String securityBaseUrl = "http://localhost:8080";
     private String saludoBaseUrl = "http://localhost:80";
+    private String consumerBaseUrl = "http://localhost:8081";
     private String orchestratorBaseUrl = "http://localhost:8083";
     private String deliveryBaseUrl = "http://localhost:8082";
     private String monitoringBaseUrl = "http://localhost:8000";

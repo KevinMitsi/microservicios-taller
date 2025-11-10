@@ -28,7 +28,7 @@ public class ConsumerServiceClient {
         return given()
                 .baseUri(config.getConsumerBaseUrl())
                 .when()
-                .get("/api/health")
+                .get("/health")
                 .then()
                 .extract()
                 .response();

@@ -78,7 +78,7 @@ public class OrchestratorServiceClient {
         return given()
                 .baseUri(config.getOrchestratorBaseUrl())
                 .when()
-                .get("/api/health")
+                .get("/health")
                 .then()
                 .extract()
                 .response();

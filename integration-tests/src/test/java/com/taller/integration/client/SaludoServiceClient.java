@@ -29,7 +29,7 @@ public class SaludoServiceClient {
         return given()
                 .baseUri(config.getSaludoBaseUrl())
                 .when()
-                .get("/api/health")
+                .get("/health")
                 .then()
                 .extract()
                 .response();
